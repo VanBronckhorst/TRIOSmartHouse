@@ -11,9 +11,12 @@ signature:
 	state PowerSupplied(PowerType);
 
 	axioms:
-		var:
-		p,p1:PowerType;
-		Definition of power consumption:
-		(PowerRequired(p)&PowerSupplied(p1))-> (p=p1)|(p1=0);
+	var:
+	p,p1:PowerType;
+
+	formulae:
+	
+	Definition of power consumption:
+	(PowerRequired(p)&PowerSupplied(p1)) -> (p=p1)|(p1=0);
 
 end;

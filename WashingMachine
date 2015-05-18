@@ -1,0 +1,15 @@
+class WashingMachine( const MaxPower,const MaxSlots,const MaxDelay):
+
+signature:
+visible:
+    MayAct,MustAct;
+
+domains:
+	SlotsType: 1..MaxSlots;
+	PowerType: 1..MaxPower;
+	DelayType: 1..MaxDelay;
+	Bool:0..1;
+
+items:
+	event MayAct(SlotsType,DelayType,Bool);
+	event MustAct(real);    
