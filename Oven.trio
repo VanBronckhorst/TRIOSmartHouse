@@ -49,12 +49,6 @@ formulae:
 		StartTask1(t) -> Futr(requestTask(i,TASK_TIME,DEV_POW) ,t) &
 		requestTask(i,TASK_TIME,DEV_POW) -> ex(t2)( Past(StartTask1(t1),t2)); 
 
-	/*
-		This formulae ensure that the task 2 is requested to the ems after the specified Delay Time
-	*/
-	ScheduleTask2:
-		StartTask2(t) -> Futr(requestTask(i,May,DEV_POW,TASK_TIME,3,300,0) ,t) &
-		requestTask(i,May,DEV_POW,3,300,0) -> ex(t1)( Past(StartTask2(t1),t1));
 
 	/*
 		Ensures that if a must request has been sent the task will be executed
