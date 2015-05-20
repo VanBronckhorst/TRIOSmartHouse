@@ -2,13 +2,17 @@ class EMS(const MAX_FROM_HEM):
 signature:
 	visible: ;
 
-	domains:;
+	domains:
+		Resp: {Go,Warn};
+
 
 	items:
 
 	event washControl();
 
 	state washPower();
+
+	event msgToWash(Resp);
 
 	event ovenControl();
 
@@ -30,15 +34,24 @@ signature:
 		formulae:
 
 		ConsumptionDefinition:
-		consumption = washPower + ovenPower + legacyPower1;
+		consumption = washPower + ovenPower + legacyPower1 &
+		production = windmillPower + solarPower &
+		max = production + MAX_FROM_HEM;
+
+		ResponsesFromEMS:
+		washControl(i,m,p,t,s,d,sh,b) & (consumption + p < max) -> (msgToWash(Go) & washPower = p) &
+		washControl(i,m,p,t,s,d,sh,0) & (consumption + p > max) -> msgToWash(Warn) & washPower=0;
 
 		PowerBalance:
 		washPower + ovenPower + legacyPower1 <= windmillPower + solarPower +hemPower &
 		(washPower + ovenPower + legacyPower1 <= windmillPower + solarPower ) -> (hemPower=0) &
 		(hemPower>=MAX_FROM_HEM) -> overflow;
 
-		OverflowMeasures:
-		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,1)) -> 
+		OverflowMeasuresShed:
+		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,1,b)) ->  msgToWash(Warn) & washPower = 0;
 
+		OverflowMeasuresShift:
+		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & washPower > 0-> (Lasts(washPower=0,d) | WithinF(consumption+p<max,d) ) &
+		(consumption+p<max) & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & t>0 & washPower = 0 -> washPower = p
 
 
