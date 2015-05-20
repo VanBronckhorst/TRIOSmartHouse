@@ -1,0 +1,44 @@
+class WashingMachine( const MaxPower,const MaxSlots,const MaxDelay)
+inherit device:
+
+signature:
+visible:
+    StartTask1,StartTask2;
+
+
+items:
+
+	
+
+	/*
+	   Task 1 is a must task and its parameter is the delay for wich we want to schedule it
+	*/
+	event StartTask1(natural);
+
+	/*
+	 	Task 2 is a may task
+	*/
+	event StartTask2(natural);
+
+
+axioms:
+
+formulae:
+
+	
+	/*
+		This formulae ensure that the task 1 is requested to the ems after the specified Delay Time
+	*/
+	ScheduleTask1:
+		StartTask1(t) -> Futr(requestTask(i,Must,DEV_POW,TASK_TIME,1,0,0) ,t) &
+		requestTask(i,Must,DEV_POW,1,0,0) -> ex(t1)( Past(StartTask1(t1),t1)); 
+
+	/*
+		This formulae ensure that the task 2 is requested to the ems after the specified Delay Time
+	*/
+	ScheduleTask2:
+		StartTask2(t) -> Futr(requestTask(i,May,DEV_POW,TASK_TIME,3,300,0) ,t) &
+		requestTask(i,May,DEV_POW,3,300,0) -> ex(t1)( Past(StartTask2(t1),t1));
+
+	
+		 	
