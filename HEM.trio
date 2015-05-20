@@ -1,0 +1,26 @@
+class HEM(const MAX_POW,const MAX_TIME,const MAX_OVF):
+signature:
+    visible powerErogated, blackout, manualRestore;
+
+    items:
+
+    state powerErogated(natural);
+
+    state blackout();
+
+    event manualRestore();
+
+    axioms:
+
+    formulae:
+
+    	ex(i)(powerErogated(i) &  i > MAX_POW*MAX_OVF )-> blackout
+
+    	Lasted(ex(i)(powerErogated(i)) &  i>MAX_POW, MAX_TIME) -> blackout
+
+    	blackout -> powerErogated(0)
+
+    	blackout -> Until(blackout,manualRestore)
+
+    	blackout & manualRestore -> not blackout
+end

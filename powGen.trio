@@ -1,0 +1,11 @@
+class powerGenerator():
+signature:
+	visible: powerErogated();
+
+	items:
+
+	state powerErogated(natural);
+
+
+axioms:
+  		

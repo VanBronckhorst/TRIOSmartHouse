@@ -44,7 +44,7 @@ formulae:
 		Ensures that if a must request has been sent the task will be executed
 	*/
 	MustInsurance:
-		requestTask(i,Must,p,t,s,d,0,0)-> Within(Lasts(powerSupplied=p,t),t+MAX_DELAY);
+		requestTask(i,Must,p,t,s,d,0,0)-> Within(Lasts(powerSupplied(p),t),t+MAX_DELAY);
 
 	/*
  		Ensures completion of all non sheddable tasks
@@ -58,26 +58,26 @@ formulae:
 		requestTask(i,m,p,t,s,d,sh,b)-> Within(msgFromEMS(i,s),MAX_DELAY);
 
 	ResponseStartSupply:
-		msgFromEMS(i,Start)&requestTask(i,Must,p,t,s,d,sh,0)-> Lasts(powerSupplied=p,t) &
+		msgFromEMS(i,Start)&requestTask(i,Must,p,t,s,d,sh,0)-> Lasts(powerSupplied(p),t) &
 		msgFromEMS(i,Start)&requestTask(i,m,p,t,s,d,sh,b) -> performingTask(i,t);
 
 	TimeToLiveDefinition:
 		(performingTask(i,t) & t>0) -> SomF(performingTask(i,0) | SomP(requestTask(i,m,p,t1,s,d,1)) &
 		UpToNow(performingTask(i,t)) -> ((performingTask(i,t1) & t1<=t) |  (msgFromEMS(i2,Start) & i2<>i)) &
-		Past(performingTask(i,t),timePassed) & SomP(requestTask(i,m,p,tot,s,d,sh),b) & Lasted(powerSupplied=p,timePassed) -> (performingTask(i,ttl)& ttl=t-timePassed)
+		Past(performingTask(i,t),timePassed) & SomP(requestTask(i,m,p,tot,s,d,sh),b) & Lasted(powerSupplied(p),timePassed) -> (performingTask(i,ttl)& ttl=t-timePassed)
 
 	/*
 	  Defines that, if there's a power shortage during the execution the task must have been a delayable one
 	*/
 	ShiftDefinition:
-		performingTask(i,t) & t>0 & powerSupplied=0 -> SomP(requestTask(i,May,p,tot,s,d,sh,b))& s>1 & d>0	&
-		performingTask(i,t) & t>0 & Lasted(powerSupplied=0,pause) & pause>0 -> SomP(requestTask(i,May,p,tot,s,d,sh,b))& s>1 & d>=pause &
+		performingTask(i,t) & t>0 & powerSupplied(0) -> SomP(requestTask(i,May,p,tot,s,d,sh,b))& s>1 & d>0	&
+		performingTask(i,t) & t>0 & Lasted(powerSupplied(0),pause) & pause>0 -> SomP(requestTask(i,May,p,tot,s,d,sh,b))& s>1 & d>=pause &
 		// How to say that it can stop at most s times?;	
 
 	/*
 		if the task is not balanceable then the power supplied must always be equal to the requested
 	*/
 	NonBalanceableDef:
-	    performingTask(i,t) & SomP(requestTask(i,May,p,tot,s,d,sh,0))-> powerSupplied=0 | powerSupplied=p ;
+	    performingTask(i,t) & SomP(requestTask(i,May,p,tot,s,d,sh,0))-> powerSupplied(0) | powerSupplied(p) ;
 
 

@@ -10,48 +10,50 @@ signature:
 
 	event washControl();
 
-	state washPower();
+	state washPower(natural);
 
 	event msgToWash(Resp);
 
 	event ovenControl();
 
-	state ovenPower();
+	state ovenPower(natural);
 
-	state legacyPower1;
+	state legacyPower1(natural);
 
-	state windmillPower();
+	state windmillPower(natural);
 
-	state solarPower();
+	state solarPower(natural);
 
-	state overflow();
+	state overflow;
 
-	state hemPower();
+	state hemPower(natural);
 
-	state consumption();
+	state consumption(natural);
+
+	state max(natural);
 
 	axioms:
 		formulae:
 
 		ConsumptionDefinition:
-		consumption = washPower + ovenPower + legacyPower1 &
-		production = windmillPower + solarPower &
-		max = production + MAX_FROM_HEM;
+		consumption(i) <-> washPower(a1) & ovenPower(a2) & legacyPower1(a3) & (i=a1+a2+a3)  &
+		production(i) <-> windmillPower(a1) & solarPower(a2) & (i=a1+a2)  &
+		max(i) = production(a) & (i= a + MAX_FROM_HEM);
 
 		ResponsesFromEMS:
-		washControl(i,m,p,t,s,d,sh,b) & (consumption + p < max) -> (msgToWash(Go) & washPower = p) &
-		washControl(i,m,p,t,s,d,sh,0) & (consumption + p > max) -> msgToWash(Warn) & washPower=0;
+		washControl(i,m,p,t,s,d,sh,b) & consumption(cons) & (cons + p < max) -> (msgToWash(Go) & washPower(p)) &
+		washControl(i,m,p,t,s,d,sh,0) & consumption(cons) & (cons + p > max) -> msgToWash(Warn) & washPower(0);
 
 		PowerBalance:
-		washPower + ovenPower + legacyPower1 <= windmillPower + solarPower +hemPower &
+		consumption(con) & production(prod) & hemPower(bought) -> con=production+bought  &
 		(washPower + ovenPower + legacyPower1 <= windmillPower + solarPower ) -> (hemPower=0) &
 		(hemPower>=MAX_FROM_HEM) -> overflow;
 
 		OverflowMeasuresShed:
-		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,1,b)) ->  msgToWash(Warn) & washPower = 0;
+		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,1,b)) ->  msgToWash(Warn) & washPower(0);
 
 		OverflowMeasuresShift:
 		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & washPower > 0-> (Lasts(washPower=0,d) | WithinF(consumption+p<max,d) ) &
-		(consumption+p<max) & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & t>0 & washPower = 0 -> washPower = p
+		consumption(cons) & (cons+p<max) & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & t>0 & washPower(0) -> washPower(p)
 
 
