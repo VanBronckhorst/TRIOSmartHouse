@@ -37,6 +37,8 @@ items:
 	*/
 	event StartTask2(natural);
 
+	state performingTask(integer,natural);
+
 axioms:
 
 formulae:
@@ -75,5 +77,12 @@ formulae:
 		requestTask(i,m,p,t,s,d,sh)-> Within(msgFromEMS(i,s),MAX_DELAY);
 
 	ResponseStartSupply:
-		msgFromEMS(i,Start)&requestTask(i,m,p,t,s,d,sh)-> Lasts(powerSupplied=p,t)
+		msgFromEMS(i,Start)&requestTask(i,m,p,t,s,d,sh)-> Lasts(powerSupplied=p,t) &
+		msgFromEMS(i,Start)&requestTask(i,m,p,t,s,d,sh) -> performingTask(i,t);
+
+	TimeToLiveDefinition:
+		ex(i,t)(performingTask(i,t) & t>0) -> SomF(performingTask(i,0) | SomP(requestTask(i,m,p,t1,s,d,1)) &
+		UpToNow(performingTask(i,t)) -> ((performingTask(i,t1) & t1<=t) |  (msgFromEMS(i2,Start) & i2<>i)) &
+		Past(performingTask(i,t),timePassed) & SomP(requestTask(i,m,p,tot,s,d,sh)) & Lasted(powerSupplied=p,timePassed) -> (performingTask(i,ttl)& ttl=t-timePassed)
+
 		 	

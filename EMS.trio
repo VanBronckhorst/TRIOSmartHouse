@@ -1,0 +1,44 @@
+class EMS(const MAX_FROM_HEM):
+signature:
+	visible: ;
+
+	domains:;
+
+	items:
+
+	event washControl();
+
+	state washPower();
+
+	event ovenControl();
+
+	state ovenPower();
+
+	state legacyPower1;
+
+	state windmillPower();
+
+	state solarPower();
+
+	state overflow();
+
+	state hemPower();
+
+	state consumption();
+
+	axioms:
+		formulae:
+
+		ConsumptionDefinition:
+		consumption = washPower + ovenPower + legacyPower1;
+
+		PowerBalance:
+		washPower + ovenPower + legacyPower1 <= windmillPower + solarPower +hemPower &
+		(washPower + ovenPower + legacyPower1 <= windmillPower + solarPower ) -> (hemPower=0) &
+		(hemPower>=MAX_FROM_HEM) -> overflow;
+
+		OverflowMeasures:
+		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,1)) -> 
+
+
+
