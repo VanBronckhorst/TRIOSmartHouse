@@ -1,75 +1,43 @@
-class Oven(const MaxPower,const MaxDelay):
+class Oven(const TaskPower, const TaskTime)
+inherit device:
 
 signature:
-visible:
-    msgFromEMS,powerSupplied,requestTask,StartTask1, blackOutEvent;
+	visible:
+   		StartTask1;
 
-domains:
-	PowerType: 1..MaxPower;
-	DelayType: 1..MaxDelay;
-	TaskType: {Must};
-	Resp: {Go,Warn};
 
 items:
 
-	/*
-
-	*/
-	event msgFromEMS(integer,Resp);
-	/*
-		Represents the amount of power given to the device at every moment
-	*/
-	state powerSupplied(PowerType);
-	/*
-		This event sends the task to the HAN at the moment it is scheduled to start
-	*/
-	event requestTask(integer,nautural,PowerType);
+	
 
 	/*
-	   Task 1 is a must task and its parameter is the delay for wich we want to schedule it
+	   Task 1 is a must task and its parameter is the delay for wich we want to schedule it. We assume that the oven can only perform must task.
 	*/
 	event StartTask1(natural);
 
 
+
+
 axioms:
 
-formulae:
+	formulae:
 
-	/*
-		Defines the task id
-	*/
-	TaskIdDef:
-		(requestTask(i,t,p) & SomP(requestTask(i2,t2,p2)) & all(i3)(i3>i2-> not ex(t3,p3)(requestTask(i3,t3,p3)) )) -> (i=i2+1) &
-		(requestTask(i,t,p) & AlwP(not requestTask(i2,t2,p2)) -> i=1;
 
+
+	
 	/*
 		This formulae ensure that the task 1 is requested to the ems after the specified Delay Time
 	*/
-	ScheduleTask1:
-		StartTask1(t) -> Futr(requestTask(i,TASK_TIME,DEV_POW) ,t) &
-		requestTask(i,TASK_TIME,DEV_POW) -> ex(t2)( Past(StartTask1(t1),t2)); 
+		ScheduleTask1:
+			StartTask1(t) & Futr(not ex(i)(perfomingTask(i,t1) & t1 > 0),t) -> Futr(requestTask(i,Must,TaskPower,TaskTime,1,0,0,0) ,t) &
+			StartTask1(t) & Futr(ex(i1)(perfomingTask(i1,t1) & t1 > 0) -> SomF(requestTask(i,Must,TaskPower,TaskTime,1,0,0,0),t)) &
+			requestTask(i,Must,TaskPower,TaskPower,1,0,0,0) -> ex(t1)(Past(StartTask1(t1),t1)); 
 
 
-	/*
-		Ensures that if a must request has been sent the task will be executed
-	*/
-	MustInsurance:
-		requestTask(i,t,p) & Within(not blackOutEvent,t+MAX_DELAY) -> Within(Lasts(powerSupplied=p,t),t+MAX_DELAY);
+		NotTwoTaskScheduleAtTheSameTime:
+			ex(t,t1) (StartTask1(t) & StartTask1(t1) -> t!=t1);
 
 
-	/*
-		Ensures that a task will terminate
-	*/
-
-	TaskTermination:
-
-
-	/*
-	    Ensures a response from the EMS in MAX_DELAY time. We assume that no packet is lost.
-	*/	
-	Response:
-		requestTask(i,t,p)-> Within(msgFromEMS(i,s),MAX_DELAY);
-
-	ResponseStartSupply:
-		msgFromEMS(i,Start)&requestTask(i,t,p) Within(not blackOutEvent,t) -> Lasts(powerSupplied=p,t)
+end
+	
 		 	
