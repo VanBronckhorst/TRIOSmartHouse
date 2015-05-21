@@ -32,6 +32,8 @@ signature:
 
 	state max(natural);
 
+	state blackoutReceive;
+
 	axioms:
 		formulae:
 
@@ -53,7 +55,13 @@ signature:
 		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,1,b)) ->  msgToWash(Warn) & washPower(0);
 
 		OverflowMeasuresShift:
-		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & washPower > 0-> (Lasts(washPower=0,d) | WithinF(consumption+p<max,d) ) &
+		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & washPower(i) & i>0 -> (Lasts(washPower(0),d) | WithinF(consumption+p<max,d) ) &
 		consumption(cons) & (cons+p<max) & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & t>0 & washPower(0) -> washPower(p)
+
+		OverflowMeasuresBalance:
+		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,1)) & washPower(nowWash) & nowWash >0 & max(tot )& ex(z)(z>0 & z<p & consumption(now) & (now-nowWash+z=t) )  -> washPower(z)
+
+		OnBlackout:
+		blackoutReceive -> consumption(0)
 
 
