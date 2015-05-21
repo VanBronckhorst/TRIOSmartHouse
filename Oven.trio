@@ -1,41 +1,52 @@
 class Oven(const TaskPower, const TaskTime)
 inherit device:
 
-signature:
-	visible:
-   		StartTask1;
+	signature:
+		visible:
+			/*
+				input
+			*/
+	   		StartTask1;
 
 
-items:
+	items:
 
-	
+		
 
-	/*
-	   Task 1 is a must task and its parameter is the delay for wich we want to schedule it. We assume that the oven can only perform must task.
-	*/
-	event StartTask1(natural);
-
-
-
-
-axioms:
-
-	formulae:
+		/*
+			The start task event is an event from the outside. It comes from an human interface that we don't model.
+			We assume that the oven can only perform must task.
+			@param natural: the delay of the task
+		*/
+		event StartTask1(natural);
 
 
 
-	
-	/*
-		This formulae ensure that the task 1 is requested to the ems after the specified Delay Time
-	*/
-		ScheduleTask1:
-			StartTask1(t) & Futr(not ex(i)(perfomingTask(i,t1) & t1 > 0),t) -> Futr(requestTask(i,Must,TaskPower,TaskTime,1,0,0,0) ,t) &
-			StartTask1(t) & Futr(ex(i1)(perfomingTask(i1,t1) & t1 > 0) -> SomF(requestTask(i,Must,TaskPower,TaskTime,1,0,0,0),t)) &
-			requestTask(i,Must,TaskPower,TaskPower,1,0,0,0) -> ex(t1)(Past(StartTask1(t1),t1)); 
+
+	axioms:
+
+		formulae:
 
 
-		NotTwoTaskScheduleAtTheSameTime:
-			ex(t,t1) (StartTask1(t) & StartTask1(t1) -> t!=t1);
+
+		
+			/*
+				This formula ensure that the task 1 is requested to the ems after the specified Delay Time and after that 
+				all the task previously scheduled has been completed.
+
+			*/
+			ScheduleTask1:
+				StartTask1(t) & Futr(not ex(i)(perfomingTask(i,t1) & t1 > 0),t) -> Futr(requestTask(i,Must,TaskPower,TaskTime,1,0,0,0) ,t) &
+				StartTask1(t) & ex(i1)(Futr(perfomingTask(i1,t1) & t1 > 0,t) -> Until(not(requestTask(i,Must,TaskPower,TaskTime,1,0,0,0)),perfomingTask(i1,t1) & t1 > 0)
+				& SomF(requestTask(i,Must,TaskPower,TaskTime,1,0,0,0),t)) &
+				requestTask(i,Must,TaskPower,TaskPower,1,0,0,0) -> ex(t1)(Past(StartTask1(t1),t1)); 
+
+
+			/*
+				This axiom says that two axioms cannot be scheduled at the same time
+			*/
+			NotTwoTaskScheduleAtTheSameTime:
+				ex(t,t1) (StartTask1(t) & StartTask1(t1) -> t!=t1);
 
 
 end
