@@ -44,7 +44,10 @@ formulae:
 		requestTask(i,m,p,t,s,d,sh,b) -> not SomF(requestTask(i,m2,p2,t2,s2,d2,sh2,b2));
 	
 	NotRequestWhileWorking:
-		requestTask(i,m,p,t,s,d,sh,b) -> not ex(i2)((i2<>i1)& performingTask(i2,t2)&t2>0);
+		requestTask(i,m,p,t,s,d,sh,b) -> not ex(i2)((i2<>i1)& performingTask(i2,t2)&t2>0); 
+
+	NoConsecutiveRequests:
+		requestTask(i,m,p,t,s,d,sh,b) -> Until( not ex(i2,m2,p2,t2,s2,d2,sh2,b2)(requestTask(i2,m2,p2,t2,s2,d2,sh2,b2)) , msgFromEMS(i,resp))	
 
 	/*
 		Ensures that if a must request has been sent the task will be executed
