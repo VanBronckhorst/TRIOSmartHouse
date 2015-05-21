@@ -29,6 +29,8 @@ items:
 
 	state performingTask(integer,natural);
 
+	state stopCounter(integer,natural);
+
 axioms:
 
 formulae:
@@ -70,7 +72,7 @@ formulae:
 	  Defines that, if there's a power shortage during the execution the task must have been a delayable one
 	*/
 	ShiftDefinition:
-		performingTask(i,t) & t>0 & powerSupplied(0) -> SomP(requestTask(i,May,p,tot,s,d,sh,b))& s>1 & d>0	&
+		performingTask(i,t) & t>0 & powerSupplied(0) & stopCounter(i,k)-> SomP(requestTask(i,May,p,tot,s,d,sh,b))& s>1 & d>0 & k+1 < s & stopCounter(i,k+1)	&
 		performingTask(i,t) & t>0 & Lasted(powerSupplied(0),pause) & pause>0 -> SomP(requestTask(i,May,p,tot,s,d,sh,b))& s>1 & d>=pause &
 		// How to say that it can stop at most s times?;	
 
