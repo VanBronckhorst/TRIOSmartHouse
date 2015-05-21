@@ -12,6 +12,11 @@ signature:
     formulae:
 
 
+
+    	/*
+
+    	When finished last activity schedule a new task after Delay
+    	*/
     	ScheduleActivityEveryDelay:
 
     		not ex(i,t)(performingTask(i,t) & t>0) -> Futr(requestTask(i2,May,MaxPower,0,0,0,1),Delay);  

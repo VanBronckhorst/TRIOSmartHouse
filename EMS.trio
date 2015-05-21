@@ -34,6 +34,10 @@ signature:
 
 	state blackoutReceive;
 
+	state termalData(natural,integer);
+
+	state termTreshold(natural,integer);
+
 	axioms:
 		formulae:
 
@@ -62,6 +66,9 @@ signature:
 		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,1)) & washPower(nowWash) & nowWash >0 & max(tot )& ex(z)(z>0 & z<p & consumption(now) & (now-nowWash+z=t) )  -> washPower(z)
 
 		OnBlackout:
-		blackoutReceive -> consumption(0)
+		blackoutReceive -> consumption(0) & msgToWash(Warn) & msgToOven(Warn) & ...;
+
+		TermalAlarm:
+		ex(i,t,t2)(termalData(i,t) & termTreshold(i,t2) & t<t2) <-> alarmToHeating(i)
 
 

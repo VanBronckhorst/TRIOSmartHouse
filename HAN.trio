@@ -1,0 +1,26 @@
+class HAN(const MAX_DELAY):
+signature:
+	visible washIn,washOut,ovenIn,ovenOut,refrigeratorIn,refrigeratorOut;
+
+	domains:
+	Bool:0..1;
+	TaskType: {May,Must};
+	Resp: {Go,Warn};
+
+
+	event washIn(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
+	event washOut(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
+	event ovenIn(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
+	event ovenOut(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
+	event refrigeratorIn(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
+	event refrigeratorOut(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
+
+	axioms:
+
+		NoMessagesLost:
+		ex(i,m,p,s,d,sh,b)(washIn(i,m,p,s,d,sh,b)) -> WithinF(washOut(i,m,p,s,d,sh,b),MAX_DELAY) &
+		ex(i,m,p,s,d,sh,b)(washOut(i,m,p,s,d,sh,b)) -> WithinP(washIn(i,m,p,s,d,sh,b),MAX_DELAY) &
+		ex(i,m,p,s,d,sh,b)(ovenIn(i,m,p,s,d,sh,b)) -> WithinF(ovenOut(i,m,p,s,d,sh,b),MAX_DELAY) &
+		ex(i,m,p,s,d,sh,b)(ovenOut(i,m,p,s,d,sh,b)) -> WithinP(ovenIn(i,m,p,s,d,sh,b),MAX_DELAY) &
+		ex(i,m,p,s,d,sh,b)(refrigeratorIn(i,m,p,s,d,sh,b)) -> WithinF(refrigeratorOut(i,m,p,s,d,sh,b),MAX_DELAY) &
+		ex(i,m,p,s,d,sh,b)(refrigeratorOut(i,m,p,s,d,sh,b)) -> WithinP(refrigeratorIn(i,m,p,s,d,sh,b),MAX_DELAY) ;

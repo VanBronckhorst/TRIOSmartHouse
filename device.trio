@@ -53,7 +53,7 @@ formulae:
 		Ensures that if a must request has been sent the task will be executed
 	*/
 	MustInsurance:
-		requestTask(i,Must,p,t,s,d,0,0)-> Within(Lasts(powerSupplied(p),t),t+MAX_DELAY);
+		requestTask(i,Must,p,t,s,d,0,0)-> (not Within(msgFromEMS(i,Warn),t+MAX_DELAY) -> SomF(Lasts(powerSupplied(p),t)));
 
 	/*
  		Ensures completion of all non sheddable tasks
@@ -67,7 +67,7 @@ formulae:
 		requestTask(i,m,p,t,s,d,sh,b)-> Within(msgFromEMS(i,s),MAX_DELAY);
 
 	ResponseStartSupply:
-		msgFromEMS(i,Start)&requestTask(i,Must,p,t,s,d,sh,0)-> Lasts(powerSupplied(p),t) &
+		msgFromEMS(i,Start)&requestTask(i,Must,p,t,s,d,sh,0)-> Lasts(powerSupplied(p),t) | WithinF(msgFromEMS(i,Warn),t) &
 		msgFromEMS(i,Start)&requestTask(i,m,p,t,s,d,sh,b) -> performingTask(i,t);
 
 	TimeToLiveDefinition:
