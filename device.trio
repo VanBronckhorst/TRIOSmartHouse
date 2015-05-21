@@ -1,91 +1,137 @@
 class Device( const MaxPower,const MaxSlots,const MaxDelay):
-signature:
-visible:
-    msgFromEMS,powerSupplied,requestTask;
+	signature:
+		visible:
+			/* 
+				inputs
+			*/
+		    msgFromEMS,powerSupplied,
+		    /*
+		    	outputs
+		    */
+		    requestTask;
 
-domains:
-	SlotsType: 1..MaxSlots;
-	PowerType: 1..MaxPower;
-	DelayType: 1..MaxDelay;
-	Bool:0..1;
-	TaskType: {May,Must};
-	Resp: {Go,Warn};
+		domains:
+			SlotsAmount: 1..MaxSlots;
+			PowerAmount: 1..MaxPower;
+			DelayAmount: 1..MaxDelay;
+			Bool:0..1;
+			TaskType: {May,Must};
+			Resp: {Start,Warn};
 
-items:
+		items:
 
-	/*
+			/*
+				This event is triggered when the device received a message from the ems
+				@param integer: id of the task that is waiting for a response
+				@param Resp: the response of the Ems. Start means that the device can start the task, Warn means that
+				the task can't start because of an overload.
+			*/
+			event msgFromEMS(integer,Resp);
 
-	*/
-	event msgFromEMS(integer,Resp);
-	/*
-		Represents the amount of power given to the device at every moment
-	*/
-	state powerSupplied(PowerType);
-	/*
-		This event sends the task to the HAN at the moment it is scheduled to start
-		(id,MAy/Must,powerReq,Time,MaxofSlots,MaxDelay,Sheddable,Balanceable)
-	*/
-	event requestTask(integer,TaskType,PowerType,natural,SlotsType,DelayType,Bool,Bool);
+			/*
+				Represents the amount of power given to the device at every moment.
+				@param PowerAmount: the amount of power provided to the device.
+			*/
+			state powerSupplied(PowerAmount);
 
-	state performingTask(integer,natural);
+			/*
+				This event sends the task to the HAN at the moment it is scheduled to start
+				@param integer: id of the task
+				@param TaskType: type of the task, i.e., May or Must
+				@param PowerAmount: amount of power requested by the task
+				@param natural: amount of time necessary to complete the task
+				@param SlotsAmount: maximum number of slots in which a task allowing load shifting can be divided
+				@param DelayAmount: maximum delay between two slots
+				@param Bool: 1 if the task allows load shedding, 0 otherwise
+				@param Bool: 1 if the task allows load balancing, 0 otherwise
+			*/
+			event requestTask(integer,TaskType,PowerAmount,natural,SlotsAmount,DelayType,Bool,Bool);
 
-	state stopCounter(integer,natural);
+			
+			/*
+				State that takes into account the amount of time remaining to complete a task.
+				@param integer: id of the task
+				@param real: amount of time remaining to complete the task
+			*/
+			state performingTask(integer,real);
+			
+			/*
+				This state represents the aumount of energy remaining to complete a task;
+				@param integer: the id of the task
+				@param real: the amount of energy remaining
+			*/
+			state remainingEnergy(integer,real);
 
-axioms:
+			/*
+				Counter that counts the number of time a task is stopped
+				@param integer: id of the task
+				@param natural: noumber of time a task has been stopped so far
+			*/
+			state stopCounter(integer,natural);
 
-formulae:
+		axioms:
 
-	/*
-		Defines the task id
-	*/
-	TaskIdDef:
-		(requestTask(i,m,p,t,s,d,sh,b) & SomP(requestTask(i2,m2,p2,t2,s2,d2,sh2,b2)) & all(i3)(i3>i2-> not ex(m3,p3,t3,s3,d3,sh3,b3)(requestTask(i3,m3,p3,t3,s3,d3,sh3,b3)) )) -> (i=i2+1) &
-		(requestTask(i,m,p,t,s,d,sh,b) & not SomP(requestTask(i2,m2,p2,t2,s2,d2,sh2,b2)) -> i=1 &
-		requestTask(i,m,p,t,s,d,sh,b) -> not SomF(requestTask(i,m2,p2,t2,s2,d2,sh2,b2));
-	
-	NotRequestWhileWorking:
-		requestTask(i,m,p,t,s,d,sh,b) -> not ex(i2)((i2<>i1)& performingTask(i2,t2)&t2>0); 
+			formulae:
 
-	NoConsecutiveRequests:
-		requestTask(i,m,p,t,s,d,sh,b) -> Until( not ex(i2,m2,p2,t2,s2,d2,sh2,b2)(requestTask(i2,m2,p2,t2,s2,d2,sh2,b2)) , msgFromEMS(i,resp))	
+				/*
+					Defines the task id
+				*/
+				TaskIdDef:
+					(requestTask(i,m,p,t,s,d,sh,b) & SomP(requestTask(i2,m2,p2,t2,s2,d2,sh2,b2)) & all(i3)(i3>i2-> not ex(m3,p3,t3,s3,d3,sh3,b3)(requestTask(i3,m3,p3,t3,s3,d3,sh3,b3)) )) -> (i=i2+1) &
+					(requestTask(i,m,p,t,s,d,sh,b) & not SomP(requestTask(i2,m2,p2,t2,s2,d2,sh2,b2)) -> i=1 &
+					requestTask(i,m,p,t,s,d,sh,b) -> not SomF(requestTask(i,m2,p2,t2,s2,d2,sh2,b2));
+				
+				NotRequestWhileWorking:
+					requestTask(i,m,p,t,s,d,sh,b) -> not ex(i2)((i2<>i1)& performingTask(i2,t2)&t2>0); 
 
-	/*
-		Ensures that if a must request has been sent the task will be executed
-	*/
-	MustInsurance:
-		requestTask(i,Must,p,t,s,d,0,0)-> (not Within(msgFromEMS(i,Warn),t+MAX_DELAY) -> SomF(Lasts(powerSupplied(p),t)));
+				NoConsecutiveRequests:
+					requestTask(i,m,p,t,s,d,sh,b) -> Until( not ex(i2,m2,p2,t2,s2,d2,sh2,b2)(requestTask(i2,m2,p2,t2,s2,d2,sh2,b2)) , msgFromEMS(i,resp))	
 
-	/*
- 		Ensures completion of all non sheddable tasks
-	*/
- 	MustEndIfNotSheddable:	
- 		requestTask(i,m,p,t,s,d,0,b) -> SomF(performingTask(i,0));
-	/*
-	    Ensures a response from the EMS in MAX_DELAY time
-	*/	
-	Response:
-		requestTask(i,m,p,t,s,d,sh,b)-> Within(msgFromEMS(i,s),MAX_DELAY);
+				/*
+					Ensures that if a must request has been sent the task will be executed
+				*/
+				MustInsurance:
+					requestTask(i,Must,p,t,s,d,h,k) -> (not Within(msgFromEMS(i,Warn),t+MAX_DELAY) -> SomF(Lasts(powerSupplied(p),t)));
 
-	ResponseStartSupply:
-		msgFromEMS(i,Start)&requestTask(i,Must,p,t,s,d,sh,0)-> Lasts(powerSupplied(p),t) | WithinF(msgFromEMS(i,Warn),t) &
-		msgFromEMS(i,Start)&requestTask(i,m,p,t,s,d,sh,b) -> performingTask(i,t);
+				/*
+			 		Ensures completion of all non sheddable tasks
+				*/
+			 	MustEndIfNotSheddable:	
+			 		requestTask(i,m,p,t,s,d,0,b) -> SomF(performingTask(i,0));
+				/*
+				    Ensures a response from the EMS in MAX_DELAY time
+				*/	
+				Response:
+					requestTask(i,m,p,t,s,d,sh,b)-> Within(msgFromEMS(i,s),MAX_DELAY);
 
-	TimeToLiveDefinition:
-		(performingTask(i,t) & t>0) -> SomF(performingTask(i,0) | SomP(requestTask(i,m,p,t1,s,d,1)) &
-		UpToNow(performingTask(i,t)) -> ((performingTask(i,t1) & t1<=t) |  (msgFromEMS(i2,Start) & i2<>i)) &
-		Past(performingTask(i,t),timePassed) & SomP(requestTask(i,m,p,tot,s,d,sh),b) & Lasted(powerSupplied(p),timePassed) -> (performingTask(i,ttl)& ttl=t-timePassed)
+				ResponseStartSupply:
+					msgFromEMS(i,Start)&requestTask(i,Must,p,t,s,d,sh,0)-> Lasts(powerSupplied(p),t) | WithinF(msgFromEMS(i,Warn),t) &
+					msgFromEMS(i,Start)&requestTask(i,m,p,t,s,d,sh,b) -> remainingEnergy(i,amount) & amount = t*p; //performingTask(i,t);
 
-	/*
-	  Defines that, if there's a power shortage during the execution the task must have been a delayable one
-	*/
-	ShiftDefinition:
-		performingTask(i,t) & t>0 & powerSupplied(0) & UpToNow(stopCounter(i,k))-> SomP(requestTask(i,May,p,tot,s,d,sh,b)) & s>1 & d>0 & k+1 < s & NowOn(stopCounter(i,k+1))	&
-		performingTask(i,t) & t>0 & Lasted(powerSupplied(0),pause) & pause>0 -> SomP(requestTask(i,May,p,tot,s,d,sh,b))& s>1 & d>=pause
+				/*TimeToLiveDefinition:
+					(performingTask(i,t) & t>0) -> SomF(performingTask(i,0) | SomP(requestTask(i,m,p,t1,s,d,1)) &
+					UpToNow(performingTask(i,t)) -> ((performingTask(i,t1) & t1<=t) |  (msgFromEMS(i2,Start) & i2<>i)) &
+					Past(performingTask(i,t),timePassed) & SomP(requestTask(i,m,p,tot,s,d,sh),b) & Lasted(powerSupplied(p),timePassed) -> (performingTask(i,ttl)& ttl=t-timePassed)
+				*/ 
 
-	/*
-		if the task is not balanceable then the power supplied must always be equal to the requested
-	*/
-	NonBalanceableDef:
-	    performingTask(i,t) & SomP(requestTask(i,May,p,tot,s,d,sh,0))-> powerSupplied(0) | powerSupplied(p) ;
+				TimeToLiveDefinition:
+					remainingEnergy(i,e) <-> performingTask(i,t) & t = e/powerSupplied(p);
+
+				RemainingEnergyDefinition:
+					(remainingEnergy(i,e) & e>0) -> SomF(remainingEnergy(i,0) | SomP(requestTask(i,m,p,t1,s,d,1)) &
+					UpToNow(remainingEnergy(i,e)) -> Until(remainingEnergy(i,e1) & e1<=e,(msgFromEMS(i2,Start) & i2<>i)) &
+					Past(remainingEnergy(i,e),t) & Lasted(powerSupplied(p),t) -> remainingEnergy(i,e1) & e1 = e - p*t;
+				/*
+				  Defines that, if there's a power shortage during the execution the task must have been a delayable one
+				*/
+				ShiftDefinition:
+					performingTask(i,t) & t>0 & powerSupplied(0) & UpToNow(stopCounter(i,k))-> SomP(requestTask(i,May,p,tot,s,d,sh,b)) & s>1 & d>0 & k+1 < s & NowOn(stopCounter(i,k+1))	&
+					performingTask(i,t) & t>0 & Lasted(powerSupplied(0),pause) & pause>0 -> SomP(requestTask(i,May,p,tot,s,d,sh,b))& s>1 & d>=pause
+
+				/*
+					if the task is not balanceable then the power supplied must always be equal to the requested
+				*/
+				NonBalanceableDef:
+				    performingTask(i,t) & SomP(requestTask(i,May,p,tot,s,d,sh,0))-> powerSupplied(0) | powerSupplied(p) ;
 
 

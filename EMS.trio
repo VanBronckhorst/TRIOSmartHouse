@@ -8,6 +8,7 @@ signature:
 
 	items:
 
+
 	event washControl();
 
 	state washPower(natural);
@@ -38,17 +39,27 @@ signature:
 
 	state termTreshold(natural,integer);
 
+	state termPowerConsumption(natural);
+
+	state startHeating(natural);
+
+
+
 	axioms:
 		formulae:
 
 		ConsumptionDefinition:
-		consumption(i) <-> washPower(a1) & ovenPower(a2) & legacyPower1(a3) & (i=a1+a2+a3)  &
+		consumption(i) <-> washPower(a1) & ovenPower(a2) & legacyPower1(a3) & termPowerConsumption(a4) (i=a1+a2+a3+a4)  &
 		production(i) <-> windmillPower(a1) & solarPower(a2) & (i=a1+a2)  &
-		max(i) = production(a) & (i= a + MAX_FROM_HEM);
+		max(i) <-> production(a) & (i = a + MAX_FROM_HEM);
 
 		ResponsesFromEMS:
-		washControl(i,m,p,t,s,d,sh,b) & consumption(cons) & (cons + p < max) -> (msgToWash(Go) & washPower(p)) &
-		washControl(i,m,p,t,s,d,sh,0) & consumption(cons) & (cons + p > max) -> msgToWash(Warn) & washPower(0);
+
+		washControl(i,May,p,t,s,d,sh,b) & consumption(cons) & (cons + p < max) -> (msgToWash(Go) & washPower(p)) &
+		washControl(i,Must,p,t,s,d,sh,b) -> msgToWash(Go) & washPower(p) &
+		washControl(i,May,p,t,s,d,sh,0) & consumption(cons) & (cons + p > max) -> msgToWash(Warn) & washPower(0) &
+
+		ovenControl(i,Must,p,t,s,d,sh,b) -> msgToOven(Go) & ovenPower(p)
 
 		PowerBalance:
 		consumption(con) & production(prod) & hemPower(bought) -> con=production+bought  &
@@ -63,12 +74,16 @@ signature:
 		consumption(cons) & (cons+p<max) & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & t>0 & washPower(0) -> washPower(p)
 
 		OverflowMeasuresBalance:
-		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,1)) & washPower(nowWash) & nowWash >0 & max(tot )& ex(z)(z>0 & z<p & consumption(now) & (now-nowWash+z=t) )  -> washPower(z)
+		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,1)) & washPower(nowWash) & nowWash >0 & max(tot )& ex(z)(z>0 & z<p & consumption(now) & (now-nowWash+z=tot) )  -> washPower(z)
+		overflow & ex(i)(startHeating(i) & termPowerConsumption(nowTerm) & nowTerm > 0  & max(tot) & ex(z) (z>0 & consumption(now) & (now-nowTerm+z<=tot)) -> termPowerConsumption(z)
+
 
 		OnBlackout:
 		blackoutReceive -> consumption(0) & msgToWash(Warn) & msgToOven(Warn) & ...;
 
 		TermalAlarm:
-		ex(i,t,t2)(termalData(i,t) & termTreshold(i,t2) & t<t2) <-> alarmToHeating(i)
+		ex(i,t,t2)(termalData(i,t) & termTreshold(i,t2) & t<t2) <-> startHeating(i)
+
+
 
 
