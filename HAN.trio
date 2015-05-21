@@ -6,7 +6,7 @@ signature:
 	Bool:0..1;
 	TaskType: {May,Must};
 	Resp: {Go,Warn};
-
+//aa
 
 	event washIn(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
 	event washOut(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
@@ -14,13 +14,35 @@ signature:
 	event ovenOut(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
 	event refrigeratorIn(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
 	event refrigeratorOut(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
+	
+	event emsToWash(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
+	event emsToOven(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
+	event emsToRefrigerator(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
+	event washToEms(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
+	event ovenToEms(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
+	event refrigeratorToEms(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
+
 
 	axioms:
 
 		NoMessagesLost:
-		ex(i,m,p,s,d,sh,b)(washIn(i,m,p,s,d,sh,b)) -> WithinF(washOut(i,m,p,s,d,sh,b),MAX_DELAY) &
-		ex(i,m,p,s,d,sh,b)(washOut(i,m,p,s,d,sh,b)) -> WithinP(washIn(i,m,p,s,d,sh,b),MAX_DELAY) &
-		ex(i,m,p,s,d,sh,b)(ovenIn(i,m,p,s,d,sh,b)) -> WithinF(ovenOut(i,m,p,s,d,sh,b),MAX_DELAY) &
-		ex(i,m,p,s,d,sh,b)(ovenOut(i,m,p,s,d,sh,b)) -> WithinP(ovenIn(i,m,p,s,d,sh,b),MAX_DELAY) &
-		ex(i,m,p,s,d,sh,b)(refrigeratorIn(i,m,p,s,d,sh,b)) -> WithinF(refrigeratorOut(i,m,p,s,d,sh,b),MAX_DELAY) &
-		ex(i,m,p,s,d,sh,b)(refrigeratorOut(i,m,p,s,d,sh,b)) -> WithinP(refrigeratorIn(i,m,p,s,d,sh,b),MAX_DELAY) ;
+		ex(i,m,p,s,d,sh,b)(washIn(i,m,p,s,d,sh,b)) -> ( WithinF(washToEms(i,m,p,s,d,sh,b),t) & WithinF(emsToWash(i,m,p,s,d,sh,b),t1)
+		& WithinF(washOut(i,m,p,s,d,sh,b),MAX_DELAY) & t<t1<MAX_DELAY)
+
+		ex(i,m,p,s,d,sh,b)(ovenIn(i,m,p,s,d,sh,b)) -> ( WithinF(ovenToEms(i,m,p,s,d,sh,b),t) & WithinF(emsToOven(i,m,p,s,d,sh,b),t1)
+		& WithinF(ovenOut(i,m,p,s,d,sh,b),MAX_DELAY) & t<t1<MAX_DELAY)
+
+		ex(i,m,p,s,d,sh,b)(refrigeratorIn(i,m,p,s,d,sh,b)) -> ( WithinF(refrigetorToEms(i,m,p,s,d,sh,b),t) & WithinF(emsToRefrigerator(i,m,p,s,d,sh,b),t1)
+		& WithinF(refrigeratorOut(i,m,p,s,d,sh,b),MAX_DELAY) & t<t1<MAX_DELAY)
+
+
+		ex(i,m,p,s,d,sh,b)(washOut(i,m,p,s,d,sh,b)) -> ( WithinP(emsToWash(i,m,p,s,d,sh,b),t) & WithinP(washToEms(i,m,p,s,d,sh,b),t1)
+		& WithinP(washIn(i,m,p,s,d,sh,b),MAX_DELAY) & t<t1<MAX_DELAY)
+
+		ex(i,m,p,s,d,sh,b)(ovenOut(i,m,p,s,d,sh,b)) -> ( WithinP(emsToOven(i,m,p,s,d,sh,b),t) & WithinP(ovenToEms(i,m,p,s,d,sh,b),t1)
+		& WithinP(ovenIn(i,m,p,s,d,sh,b),MAX_DELAY) & t<t1<MAX_DELAY)
+
+		ex(i,m,p,s,d,sh,b)(refrigeratorOut(i,m,p,s,d,sh,b)) -> ( WithinP(emsToRefrigerator(i,m,p,s,d,sh,b),t) & WithinP(refrigetorToEms(i,m,p,s,d,sh,b),t1)
+		& WithinP(refrigeratorOut(i,m,p,s,d,sh,b),MAX_DELAY) & t<t1<MAX_DELAY)
+
+		

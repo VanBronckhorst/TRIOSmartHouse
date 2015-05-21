@@ -1,6 +1,6 @@
 class EMS(const MAX_FROM_HEM):
 signature:
-	visible: ;
+	visible: 
 
 	domains:
 		Resp: {Go,Warn};
@@ -41,7 +41,7 @@ signature:
 
 	state termPowerConsumption(natural);
 
-	state startHeating(natural);
+	state roomHeating(natural);
 
 
 
@@ -75,14 +75,14 @@ signature:
 
 		OverflowMeasuresBalance:
 		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,1)) & washPower(nowWash) & nowWash >0 & max(tot )& ex(z)(z>0 & z<p & consumption(now) & (now-nowWash+z=tot) )  -> washPower(z)
-		overflow & ex(i)(startHeating(i) & termPowerConsumption(nowTerm) & nowTerm > 0  & max(tot) & ex(z) (z>0 & consumption(now) & (now-nowTerm+z<=tot)) -> termPowerConsumption(z)
+		overflow & ex(i)(roomHeating(i) & termPowerConsumption(nowTerm) & nowTerm > 0  & max(tot) & ex(z) (z>0 & consumption(now) & (now-nowTerm+z<=tot)) -> termPowerConsumption(z)
 
 
 		OnBlackout:
 		blackoutReceive -> consumption(0) & msgToWash(Warn) & msgToOven(Warn) & ...;
 
 		TermalAlarm:
-		ex(i,t,t2)(termalData(i,t) & termTreshold(i,t2) & t<t2) <-> startHeating(i)
+		ex(i,t,t2)(termalData(i,t) & termTreshold(i,t2) & t<t2) <-> roomHeating(i)
 
 
 

@@ -1,6 +1,6 @@
 class LegacyDevice (const MaxPower)
 signature:
-	visible: PowerRequired,PowerSupplied;
+	visible: PowerRequired //serve visible? -> PowerSupplied;
 	temporal domain: real
 
 	domains:
