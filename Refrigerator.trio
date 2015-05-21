@@ -1,0 +1,17 @@
+class Refrigerator(const MaxPower, const Delay) inherit Device:
+signature:
+    visible:
+
+
+    items:
+
+
+
+    axioms:
+
+    formulae:
+
+
+    	ScheduleActivityEveryDelay:
+
+    		not ex(i,t)(performingTask(i,t) & t>0) -> Futr(requestTask(i2,May,MaxPower,0,0,0,1),Delay);  
