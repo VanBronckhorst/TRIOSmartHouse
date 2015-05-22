@@ -1,53 +1,172 @@
 class EMS(const MAX_FROM_HEM):
 signature:
 	visible: 
-
+		washControl, msgToWash, msgToOven, ovenControl, refrigeratorControl, msgToRefrigerator, termPowerConsumption, roomHeating, refPower, 
+		termalData, hemPower, blackoutReceive, legacyPower1, solarPower, windmillPower, chargeBattery, batteryPower, batteryFull, legacyReq1;
 	domains:
 		Resp: {Go,Warn};
 
 
 	items:
 
+		/*
+			This event is triggered when a request to execute a task scheduled by the washing machine is received through the HAN
+			@param integer: id of the task
+			@param TaskType: type of the task, i.e., May or Must
+			@param PowerAmount: amount of power requested by the task
+			@param natural: amount of time necessary to complete the task
+			@param SlotsAmount: maximum number of slots in which a task allowing load shifting can be divided		
+			@param DelayAmount: maximum delay between two slots
+			@param Bool: 1 if the task allows load shedding, 0 otherwise
+			@param Bool: 1 if the task allows load balancing, 0 otherwise
+		*/
+		event washControl(integer,TaskType,PowerAmount,natural,SlotsAmount,DelayType,Bool,Bool);
 
-	event washControl();
+		/*
+			State that represents tha amount of power provided to the washing machine;
+			@param real: tha amount of power provided to the washing machine at any istant
+		*/
+		state washPower(real);
 
-	state washPower(natural);
+		/*
+			Event triggered when a message is sent to the washing machine through the HAN
+			@param Resp: Start if the task can begin the execution, warn if it can't start the execution or if there is a blackout
+		*/
+		event msgToWash(Resp);
+		
+		/*
+			This event is triggered when a request to execute a task scheduled by the oven is received through the HAN
+			@param integer: id of the task
+			@param TaskType: type of the task, i.e., May or Must
+			@param PowerAmount: amount of power requested by the task
+			@param natural: amount of time necessary to complete the task
+			@param SlotsAmount: maximum number of slots in which a task allowing load shifting can be divided		
+			@param DelayAmount: maximum delay between two slots
+			@param Bool: 1 if the task allows load shedding, 0 otherwise
+			@param Bool: 1 if the task allows load balancing, 0 otherwise
+		*/
+		event ovenControl(integer,TaskType,PowerAmount,natural,SlotsAmount,DelayType,Bool,Bool);
 
-	event msgToWash(Resp);
+		/*
+			State that represents tha amount of power provided to the oven;
+			@param real: tha amount of power provided to the oven at any istant
+		*/
+		state ovenPower(real);
 
-	event ovenControl();
+		/*
+			Event triggered when a message is sent to the oven through the HAN
+			@param Resp: Start if the task can begin the execution, warn if there is a blackout
+		*/
+		event msgToOven(Resp);
 
-	state ovenPower(natural);
 
-	state legacyPower1(natural);
+		/*
+			This event is triggered when a request to execute a task scheduled by the refrigerator is received through the HAN
+			@param integer: id of the task
+			@param TaskType: type of the task, i.e., May or Must
+			@param PowerAmount: amount of power requested by the task
+			@param natural: amount of time necessary to complete the task
+			@param SlotsAmount: maximum number of slots in which a task allowing load shifting can be divided		
+			@param DelayAmount: maximum delay between two slots
+			@param Bool: 1 if the task allows load shedding, 0 otherwise
+			@param Bool: 1 if the task allows load balancing, 0 otherwise
+		*/
+		event refrigeratorControl(integer,TaskType,PowerAmount,natural,SlotsAmount,DelayType,Bool,Bool);
 
-	state legacyReq1(natural);
+		/*
+			State that represents tha amount of power provided to the refrigerator;
+			@param real: tha amount of power provided to the refrigerator at any istant
+		*/
+		state refPower(natural);
 
-	state windmillPower(natural);
+		/*
+			Event triggered when a message is sent to the refrigerator through the HAN
+			@param Resp: Start if the task can begin the execution, warn if it can't start the execution or if there is a blackout
+		*/
+		event msgToRefrigerator(Resp);
 
-	state solarPower(natural);
+		/*
+			State that represents the amount of power consumed by a legacy device
+			@param real: amount of power consumed by a legacy device at any instant
+		*/
+		state legacyPower1(real);
 
-	state overflow;
+		state legacyReq1(natural);
 
-	state hemPower(natural);
+		/*
+			A state that represents the amount of power produced by the windmill
+			@param real: amount of power produced at any istant
+		*/
+		state windmillPower(real);
 
-	state consumption(natural);
+		/*
+			A state that represents the amount of power produced by the solar panels
+			@param real: amount of power produced at any istant
+		*/
+		state solarPower(real);
 
-	state max(natural);
+		/*
+			A state that represents if the amount of power produced and bought is less then the amount of power used
+		*/
+		state overflow;
 
-	state blackoutReceive;
+		/*
+			A state that represents the amount of power bought 
+			@param real: amount of power bought at any istant
+		*/
+		state hemPower(real);
 
-	state termalData(natural,integer);
+		/*
+			A state that represents the total amount of power consumed
+			@param real: amount of power consumed at any istant
+		*/
+		state consumption(real);
 
-	state termTreshold(natural,integer);
+		/*
+			A state that represents the maximum amount of power that can be connsumed
+			@param real: maximum amount of power available at any istant
+		*/
+		state max(real);
 
-	state termPowerConsumption(natural);
+		/*
+			A state that represents that a blackout is in progress
+		*/
+		state blackoutReceive;
 
-	state roomHeating(natural);
+		/*
+			A state that represents the temperature mesaured by the temperature sensor in each room
+			@param natural: number of the room
+			@param integer: temperature mesaure in a room at any istant
+		*/
+		state termalData(natural,integer);
 
-	state batteryPower(real);
+		/*
+			A state that represents the temperature treshold of each room; this treshold is used to decide when to start the heating system.
+			@param natural: number of the room
+			@param integer: temperature treshold in a room at any istant
+		*/
+		state termTreshold(natural,integer);
 
-	state batteryFull;
+		/*
+			A state that represents the amount of power consumed by the heating system
+			@param real: amount of power consumed at any istant
+		*/		
+		state termPowerConsumption(real);
+
+
+
+		state roomHeating(natural);
+
+		/*
+			A state that represents the amount of power drained by the batteries.
+			@param real: amount of power drained at any istant
+		*/
+		state batteryPower(real);
+
+		/*
+			A state that represents if the battery is full charged.
+		*/
+		state batteryFull;
 
 
 
@@ -61,9 +180,10 @@ signature:
 
 		ResponsesFromEMS:
 
-		washControl(i,May,p,t,s,d,sh,b) & consumption(cons) & (cons + p < max) -> (msgToWash(Go) & washPower(p)) &
+		washControl(i,May,p,t,s,d,sh,b) & consumption(cons) & (((cons + p < max)  -> (msgToWash(Go) & washPower(p))) | (((cons + p > max) & b=1 & ex(p1)(0<p1<=p & cons+p1<max)  -> (msgToWash(Go) & washPower(p1))))) &
 		washControl(i,Must,p,t,s,d,sh,b) -> msgToWash(Go) & washPower(p) &
-		washControl(i,May,p,t,s,d,sh,0) & consumption(cons) & (cons + p > max) -> msgToWash(Warn) & washPower(0) &
+		washControl(i,May,p,t,s,d,sh,0) & consumption(cons) & (cons + p > max)  -> (msgToWash(Warn) & washPower(0) & SomF(msgToWash(Go))) &
+		washControl(i,May,p,t,s,d,sh,1) & consumption(cons) & not ex(p1)(0<p1<p & (cons + p1 < max))  -> (msgToWash(Warn) & washPower(0) & SomF(msgToWash(Go))) &
 
 		ovenControl(i,Must,p,t,s,d,sh,b) -> msgToOven(Go) & ovenPower(p)
 
@@ -86,13 +206,15 @@ signature:
 
 
 		OnBlackout:
-		blackoutReceive -> consumption(0) & msgToWash(Warn) & msgToOven(Warn) & ...;
+		blackoutReceive -> consumption(0) & msgToWash(Warn) & msgToOven(Warn) & msgToRefrigerator(Warn);
 
 		RestoreFromBlackout:
-		UpToNow(blackoutReceive) & NowOn(not blackoutReceive) -> (ex(p)(legacyReq1(p))-> legacyPower1(p)) & (ex(i,t)(washState(i,t)&t>0)-> msgToWash(i,Start))
+		UpToNow(blackoutReceive) & NowOn(not blackoutReceive) -> /*(ex(p)(legacyReq1(p))-> legacyPower1(p)) serve per i legacy?*/ & (ex(i,t)(washState(i,t)&t>0)-> msgToWash(i,Start)) & (ex(i,t)(ovenState(i,t)&t>0)-> msgToOven(i,Start)) & (ex(i,t)(refrState(i,t)&t>0)-> msgToRefrigerator(i,Start)); 
 
 		TermalAlarm:
 		ex(i,t,t2)(termalData(i,t) & termTreshold(i,t2) & t<t2) <-> roomHeating(i)
+
+end
 
 
 

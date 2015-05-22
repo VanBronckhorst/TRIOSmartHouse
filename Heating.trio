@@ -15,4 +15,4 @@ signature:
 		heatingRoom(i) <-> powerPerRoom(i,amount) & amount > 0;
 
 		/** we assume four rooms */
-		powerConsumption(tot) <-> powerPerRoom(1,am1) & powerPerRoom(2,am) & powerPerRoom(3,am3) & powerPerRoom(4,am4) & tot = am1+am2+am3+am4;
+		powerConsumption(tot) <-> powerPerRoom(1,am1) & powerPerRoom(2,am2) & powerPerRoom(3,am3) & powerPerRoom(4,am4) & tot = am1+am2+am3+am4;
