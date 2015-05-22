@@ -1,4 +1,5 @@
 class Device( const MaxPower,const MaxSlots,const MaxDelay):
+
 	signature:
 		visible:
 			/* 
@@ -123,7 +124,8 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 				*/
 				ResponseStartSupply:
 					msgFromEMS(i,Start)&requestTask(i,Must,p,t,s,d,sh,0)-> Lasts(powerSupplied(p),t) | WithinF(msgFromEMS(i,Warn),t) &
-					msgFromEMS(i,Start)&requestTask(i,m,p,t,s,d,sh,b) -> remainingEnergy(i,amount) & amount = t*p;
+					msgFromEMS(i,Start)&requestTask(i,m,p,t,s,d,sh,b)& not performingTask(i,t2) -> performingTask(i,t);
+					msgFromEMS(i,Start)& requestTask(i,m,p,t,s,d,sh,b) & performingTask(i,t2) -> powerSupplied(p);
 
 
 				/*
