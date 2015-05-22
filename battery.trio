@@ -1,0 +1,26 @@
+class Battery(const capacity):
+	signature:
+		visible:
+			full, empty, powerErogated, powerReceived;
+{}
+	items:
+		event full;
+		event empty;
+		state powerErogated(real);
+		state powerReceived(real);
+		state batteryLevel(real);
+
+
+	axioms:
+
+		FullDefinition:
+		full <-> batteryLevel(i) & i=capacity & powerReceived(k) & k = 0;
+
+		EmptyDefinition:
+		empty <-> batteryLevel(i) & i=0 & powerErogated(k) & k=0;
+
+		ChargingDefinition:
+		Past(batteryLevel(old),t) & Lasted(powerReceived(p),t) -> batteryLevel(now) & now=old+p*t;
+
+		DrainingDefinition:
+		Past(batteryLevel(old,t)) & Lasted(powerErogated(p),t) -> batteryLevel(now) & now=old-p*t;

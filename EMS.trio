@@ -43,6 +43,10 @@ signature:
 
 	state roomHeating(natural);
 
+	state batteryPowerErogated(real);
+
+	state batteryFull;
+
 
 
 	axioms:
@@ -51,7 +55,7 @@ signature:
 		ConsumptionDefinition:
 		consumption(i) <-> washPower(a1) & ovenPower(a2) & legacyPower1(a3) & termPowerConsumption(a4) (i=a1+a2+a3+a4)  &
 		production(i) <-> windmillPower(a1) & solarPower(a2) & (i=a1+a2)  &
-		max(i) <-> production(a) & (i = a + MAX_FROM_HEM);
+		max(i) <-> production(a) & batteryPowerErogated(b) & (i = a + b + MAX_FROM_HEM);
 
 		ResponsesFromEMS:
 
@@ -64,7 +68,8 @@ signature:
 		PowerBalance:
 		consumption(con) & production(prod) & hemPower(bought) -> con=production+bought  &
 		(washPower + ovenPower + legacyPower1 <= windmillPower + solarPower ) -> (hemPower=0) &
-		(hemPower>=MAX_FROM_HEM) -> overflow;
+		(hemPower>=MAX_FROM_HEM) -> overflow &
+		(washPower(nowWash) + ovenPower(nowOven) + legacyPower1(nowLegacy) < windmillPower(nowWind) + solarPower(nowSolar)) & not (batteryFull) -> chargeBattery(i) & i=nowWind+nowSolar) ;
 
 		OverflowMeasuresShed:
 		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,1,b)) ->  msgToWash(Warn) & washPower(0);
