@@ -21,6 +21,8 @@ signature:
 
 	state legacyPower1(natural);
 
+	state legacyReq1(natural);
+
 	state windmillPower(natural);
 
 	state solarPower(natural);
@@ -85,6 +87,9 @@ signature:
 
 		OnBlackout:
 		blackoutReceive -> consumption(0) & msgToWash(Warn) & msgToOven(Warn) & ...;
+
+		RestoreFromBlackout:
+		UpToNow(blackoutReceive) & NowOn(not blackoutReceive) -> (ex(p)(legacyReq1(p))-> legacyPower1(p)) & (ex(i,t)(washState(i,t)&t>0)-> msgToWash(i,Start))
 
 		TermalAlarm:
 		ex(i,t,t2)(termalData(i,t) & termTreshold(i,t2) & t<t2) <-> roomHeating(i)
