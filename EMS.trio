@@ -43,7 +43,7 @@ signature:
 
 	state roomHeating(natural);
 
-	state batteryPowerErogated(real);
+	state batteryPower(real);
 
 	state batteryFull;
 
@@ -55,7 +55,7 @@ signature:
 		ConsumptionDefinition:
 		consumption(i) <-> washPower(a1) & ovenPower(a2) & legacyPower1(a3) & termPowerConsumption(a4) (i=a1+a2+a3+a4)  &
 		production(i) <-> windmillPower(a1) & solarPower(a2) & (i=a1+a2)  &
-		max(i) <-> production(a) & batteryPowerErogated(b) & (i = a + b + MAX_FROM_HEM);
+		max(i) <-> production(a) & batteryPower(b) & (i = a + b + MAX_FROM_HEM);
 
 		ResponsesFromEMS:
 
