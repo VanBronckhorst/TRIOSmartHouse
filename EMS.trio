@@ -173,13 +173,33 @@ signature:
 	axioms:
 		formulae:
 
+		/*
+			This axiom defines three states of the ems:
+			1) Consumption: the total consumption, at any istant, is given as the sum of power consumed by the washing machine, by the
+			                oven, by the legacy device and by the heating system.
+			2) Production: the amount of power produced is the sum of power received from the windmill and the solar panels.
+			3) Max: it is the maximum amount of power that can be consumed ad any istant. It is the sum of power produced, the power that the batteries
+			        can produce and the power that can be bought from network(MAX_FROM_HEM)
+		*/
 		ConsumptionDefinition:
 		consumption(i) <-> washPower(a1) & ovenPower(a2) & legacyPower1(a3) & termPowerConsumption(a4) (i=a1+a2+a3+a4)  &
 		production(i) <-> windmillPower(a1) & solarPower(a2) & (i=a1+a2)  &
 		max(i) <-> production(a) & batteryPower(b) & (i = a + b + MAX_FROM_HEM);
 
+		/*
+			This axiom defines the various kind of response that the EMS can send to the devices. Various scenarios are possible:
+			1) May task: -  if there is a sufficient amount of power remaining to start the task, then a positive message is sent to the device and the 
+			                power is set to the required one.
+						 -  if the avalaible power is less than the required one and the task can be balanced, if there exist a power p1 included between
+						    0 and the required power such that the power threshold is not exceeded, a positive message is sent to the device and the 
+						    power is set to p1
+						 -  if the requested task can't be balanced because there is no sufficient power to balance it or because it doesn't allow load 
+						 	balancing, then a warning is sent to the device and no power is given to the device. Sooner or later the task will start 
+						 	anyway in order to respect one of the requested property: a given task must finish.
+			2) Must task: - a must task doesn't allows load balancing, shedding or shifting and can't be postponed. So, when a must request is received,
+							a positive message is sent the device and the power is set to the required one
+		*/
 		ResponsesFromEMS:
-
 		washControl(i,May,p,t,s,d,sh,b) & consumption(cons) & (((cons + p < max)  -> (msgToWash(Go) & washPower(p))) | (((cons + p > max) & b=1 & ex(p1)(0<p1<=p & cons+p1<max)  -> (msgToWash(Go) & washPower(p1))))) &
 		washControl(i,Must,p,t,s,d,sh,b) -> msgToWash(Go) & washPower(p) &
 		washControl(i,May,p,t,s,d,sh,0) & consumption(cons) & (cons + p > max)  -> (msgToWash(Warn) & washPower(0) & SomF(msgToWash(Go))) &
@@ -187,30 +207,63 @@ signature:
 
 		ovenControl(i,Must,p,t,s,d,sh,b) -> msgToOven(Go) & ovenPower(p)
 
+		/*
+			This formula specifies that:
+			1) the consumption at any istant is less than or equal to the sum of the power produced, bought and received from the batteries.
+			2) if the amount of power consumed is equal to the power produced by the windmill and the solar panels then the power received from the network
+			   and from the batteries is equal to 0.
+			3) if the power received from the network is greater than the maximum amount of power that can be bought, then we are in overflow.
+			4) if the power produced is less than the power produced and the batteries are not full, then the exceeding power is used to charge the batteries.
+		*/
 		PowerBalance:
-		consumption(con) & production(prod) & hemPower(bought) -> con=production+bought  &
-		(washPower + ovenPower + legacyPower1 <= windmillPower + solarPower ) -> (hemPower=0) &
+		consumption(con) & production(prod) & hemPower(bought) & batteryPower(bat) -> con<=production+bought+bat &
+		(washPower(w) & ovenPower(o) & termPowerConsumption(tp) & refPower(r) & legacyPower1(l) & windmillPower(p) & solarPower(s) & (w+o+l+r+tp=p+s)) -> (hemPower(0) & batteryPower(0)) &
 		(hemPower>=MAX_FROM_HEM) -> overflow &
-		(washPower(nowWash) + ovenPower(nowOven) + legacyPower1(nowLegacy) < windmillPower(nowWind) + solarPower(nowSolar)) & not (batteryFull) -> chargeBattery(i) & i=nowWind+nowSolar) ;
+		(washPower(w) & ovenPower(o) & termPowerConsumption(tp) & refPower(r) & legacyPower1(l) & windmillPower(p) & solarPower(s) & (w+o+l+r+tp<p+s)) -> chargeBattery(i) & i=p+s) ;
 
+		/*
+			If there is an overflow, and a sheddable task is in execution, than this task is interrupted(power set to 0) and a warning message is sent
+			to the device
+		*/
 		OverflowMeasuresShed:
 		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,1,b)) ->  msgToWash(Warn) & washPower(0);
+
+
 
 		OverflowMeasuresShift:
 		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & washPower(i) & i>0 -> (Lasts(washPower(0),d) | WithinF(consumption+p<max,d) ) &
 		consumption(cons) & (cons+p<max) & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & t>0 & washPower(0) -> washPower(p)
 
+
+		/*
+			If an overflow is in progress and it is in execution a task that can be balanced and exist a power that allows to not overcome the power threshold,
+			then the task is executed using this power.
+			In our system only task scheduled by the washing machine, the refrigerator and  the heating system can be balanced
+		*/
 		OverflowMeasuresBalance:
-		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,1)) & washPower(nowWash) & nowWash >0 & max(tot )& ex(z)(z>0 & z<p & consumption(now) & (now-nowWash+z=tot) )  -> washPower(z)
+		overflow & washState(i,t1) & t1>0 & SomP(washControl(i,May,p,t,s,d,sh,1)) & washPower(nowWash) & nowWash > 0 & max(tot)& ex(z)(z>0 & z<p & consumption(now) & (now-nowWash+z=tot) )  -> washPower(z)
+
 		overflow & ex(i)(roomHeating(i) & termPowerConsumption(nowTerm) & nowTerm > 0  & max(tot) & ex(z) (z>0 & consumption(now) & (now-nowTerm+z<=tot)) -> termPowerConsumption(z)
 
+		//manca refrigerator
 
+		/*
+			if a blackout is in progress the cosumption is set to 0 and a warning message is sent to the devices that are connected through the HAN.
+		*/	
 		OnBlackout:
 		blackoutReceive -> consumption(0) & msgToWash(Warn) & msgToOven(Warn) & msgToRefrigerator(Warn);
 
+		/*
+			If a blackout is just finished, and some tasks were executing before the blackout then a message to all the devices with pending task is sent,
+			in order to resume the execution.
+		*/
 		RestoreFromBlackout:
 		UpToNow(blackoutReceive) & NowOn(not blackoutReceive) -> /*(ex(p)(legacyReq1(p))-> legacyPower1(p)) serve per i legacy?*/ & (ex(i,t)(washState(i,t)&t>0)-> msgToWash(i,Start)) & (ex(i,t)(ovenState(i,t)&t>0)-> msgToOven(i,Start)) & (ex(i,t)(refrState(i,t)&t>0)-> msgToRefrigerator(i,Start)); 
 
+		/*
+			This formula specifies that if there exist a sensor that perceive a temperature below a certain treshold in a room than we start to heat
+			that room
+		*/
 		TermalAlarm:
 		ex(i,t,t2)(termalData(i,t) & termTreshold(i,t2) & t<t2) <-> roomHeating(i)
 
