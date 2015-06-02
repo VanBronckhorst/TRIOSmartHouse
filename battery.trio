@@ -12,6 +12,12 @@ class Battery(const capacity):
 
 
 	axioms:
+		vars:
+			i,i1,capacity:real;
+			k:real;
+			old:real;
+			p:real;
+			t:real; 
 
 		FullDefinition:
 		full <-> batteryLevel(capacity) &

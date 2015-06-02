@@ -117,7 +117,11 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 				Response:
 					requestTask(i,m,p,t,s,d,sh,b)-> Within(msgFromEMS(i,s),MAX_DELAY);
 
-
+				/*
+				 	If the EMS sent a response then the device has asked that task before
+				*/
+				ResponseGeneratedByRequest:
+					msgFromEMS(i,s) -> SomP(requestTask(i,m,p,t,st,d,sh,b))
 				/*
 					Ensure that if the EMS send a start message a MUST task is executed without load balancinc,shedding or shifting.
 					It also ensures that the state remainingEnergy is set to the right value. 
