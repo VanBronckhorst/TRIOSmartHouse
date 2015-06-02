@@ -14,13 +14,27 @@ class Battery(const capacity):
 	axioms:
 
 		FullDefinition:
-		full <-> batteryLevel(i) & i=capacity & powerReceived(k) & k = 0;
+		full <-> batteryLevel(capacity) &
+		full -> powerReceived(0);
 
 		EmptyDefinition:
-		empty <-> batteryLevel(i) & i=0 & powerErogated(k) & k=0;
+		empty <-> batteryLevel(0) & 
+		empty -> powerErogated(0);
 
 		ChargingDefinition:
 		Past(batteryLevel(old),t) & Lasted(powerReceived(p),t) -> batteryLevel(now) & now=old+p*t;
 
 		DrainingDefinition:
 		Past(batteryLevel(old,t)) & Lasted(powerErogated(p),t) -> batteryLevel(now) & now=old-p*t;
+
+		StateUnicityDefinition:
+		powerErogated(i) -> not ex(i1)(powerErogated(i1) & i<>i1) &
+		powerReceived(i) -> not ex(i1)(powerReceived(i1) & i<>i1) &
+		batteryLevel(i) -> not ex(i1)(batteryLevel(i1) & i<>i1);
+
+		PositiveValue:
+		powerReceived(i) & i >= 0 &
+		powerErogated(i) & i >= 0
+		batteryLevel(i) & i >= 0;
+
+	end

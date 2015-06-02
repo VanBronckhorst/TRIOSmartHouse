@@ -1,26 +1,35 @@
 class HEM(const MAX_POW,const MAX_TIME,const MAX_OVF):
 signature:
     visible powerErogated, blackout, manualRestore;
-
+{}
     items:
 
-    state powerErogated(natural);
+        /*
+            This state represents the amount of power erogated by the HEM, i.e., the amount of power bought from the electrical company at any istant.
+            @param real: the amount of power erogated.
+        */
+        state powerErogated(real);
 
-    state blackout();
+        /*
+            State that represents if a blackout is in progress. The EMS will take care of all the consequences of a blackout
+        */
+        state blackout;
 
-    event manualRestore();
+        /*
+            Event triggered by a human using a manual switch not modeled here.
+        */
+        event manualRestore;
 
     axioms:
 
     formulae:
 
-    	ex(i)(powerErogated(i) &  i > MAX_POW*MAX_OVF )-> blackout
+        PowerErogatedDefinition:
+    	powerErogated(i) &  i > MAX_POW*MAX_OVF  -> blackout
 
-    	Lasted(ex(i)(powerErogated(i)) &  i>MAX_POW, MAX_TIME) -> blackout
-
+        BlackoutDefinition:
+    	Lasted(powerErogated(i)) &  i>MAX_POW, MAX_TIME) -> blackout
     	blackout -> powerErogated(0)
-
     	blackout -> Until(blackout,manualRestore)
-
     	blackout & manualRestore -> not blackout
 end

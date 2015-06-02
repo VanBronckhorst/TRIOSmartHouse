@@ -16,7 +16,7 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 			PowerAmount: 1..MaxPower;
 			DelayAmount: 1..MaxDelay;
 			Bool:0..1;
-			TaskType: {May,Must};
+			TaskType: {May,Must}; 
 			Resp: {Start,Warn};
 
 		items:
@@ -86,7 +86,7 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 				 	A device can't execute two task in the same time, so a request to the ems is sent only if there isn't any running task
 				*/
 				NotRequestWhileWorking:
-					requestTask(i,m,p,t,s,d,sh,b) -> not ex(i2)((i2<>i1)& performingTask(i2,t2)&t2>0); 
+					requestTask(i,m,p,t,s,d,sh,b) -> not ex(i1)(performingTask(i1,t2) & t1>0); 
 
 				
 				/*
@@ -103,7 +103,7 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 					a warning message is sent to the device.
 				*/
 				MustInsurance:
-					requestTask(i,Must,p,t,s,d,h,k) -> (not Within(msgFromEMS(i,Warn),t+MAX_DELAY) -> Futr((Lasts(powerSupplied(p),t))),MAX_DELAY);
+					requestTask(i,Must,p,t,s,d,h,k) -> (not Within(msgFromEMS(i,Warn),t+MAX_DELAY) -> Futr((Lasts(powerSupplied(p),t)),MAX_DELAY));
 
 				/*
 			 		Ensures completion of all non sheddable tasks
@@ -132,7 +132,7 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 					It defines the time to live of a task that is contained in the state performingTask(i,t)
 				*/
 				TimeToLiveDefinition:
-					remainingEnergy(i,e) <-> performingTask(i,t) & t = e/powerSupplied(p);
+					remainingEnergy(i,e) <-> performingTask(i,t) & powerSupplied(p) & t = e/p;
 
 				/*
 					It defines the amount of energy necessary to complete the task. It ensures that if the remaining energy is greater than 0

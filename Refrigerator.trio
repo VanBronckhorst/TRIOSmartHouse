@@ -1,4 +1,4 @@
-class Refrigerator(const MaxPower, const Delay) inherit Device:
+class Refrigerator(const MaxPower, const Delay)  Device:
 signature:
     visible:
 

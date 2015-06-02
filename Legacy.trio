@@ -4,19 +4,21 @@ signature:
 	temporal domain: real
 
 	domains:
-	PowerType: 1..MaxPower; 
+	PowerAmount: 1..MaxPower; 
 
 	items:
-	state PowerRequired(PowerType);
-	state PowerSupplied(PowerType);
+		
+		state PowerRequired(PowerAmount);
+		state PowerSupplied(PowerAmount);
 
 	axioms:
-	var:
-	p,p1:PowerType;
 
-	formulae:
-	
-	Definition of power consumption:
-	(PowerRequired(p)&PowerSupplied(p1)) -> (p=p1)|(p1=0);
+		var:
+		p,p1:PowerAmount;
+
+		formulae:
+		
+		Definition of power consumption:
+		(PowerRequired(p)&PowerSupplied(p1)) -> (p=p1)|(p1=0);
 
 end;
