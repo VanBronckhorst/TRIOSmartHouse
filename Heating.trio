@@ -10,6 +10,8 @@ signature:
 
 
 	axioms:
+	vars:
+		i,amount,am1,am2,am3,am4,tot:natural;
 
 	OnlyRoomWhereHeatIsRunningConsumePower:
 		heatingRoom(i) <-> powerPerRoom(i,amount) & amount > 0;

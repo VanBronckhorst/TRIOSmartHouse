@@ -139,11 +139,11 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 					It also ensures that the state remainingEnergy is set to the right value. 
 				*/
 				ResponseStartSupply:
-					msgFromEMS(i,Start)& Past(requestTask(i,m,p,t,s,d,sh,b),MAX_DELAY) & UpToNow(not performingTask(i,t2)) -> NowOn(performingTask(i,t)) & powerSupplied(p1);
+					msgFromEMS(i,Start)& Past(requestTask(i,m,p,t,s,d,sh,b),MAX_DELAY) & UpToNow(not performingTask(i,t2)) -> NowOn(performingTask(i,t)) & powerSupplied(p1) & p1>0;
 					
 
 				StartAfterBlackout:
-					msgFromEMS(i,Start) & SomP(msgFromEMS(i,Warn)) & performingTask(i,t2) -> powerSupplied(p);
+					msgFromEMS(i,Start) & SomP(msgFromEMS(i,Warn)) & performingTask(i,t2) -> powerSupplied(p) & p>0;
 
 				ResponseMustStartSupply:
 					msgFromEMS(i,Start) & Past(requestTask(i,Must,p,t,s,d,sh,0),MAX_DELAY) -> Lasts(powerSupplied(p),t) | WithinF(msgFromEMS(i,Warn),t) 
