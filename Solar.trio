@@ -7,5 +7,4 @@ signature:
 	state powerErogated(natural);
 
 
-axioms:
-  		
+end  		

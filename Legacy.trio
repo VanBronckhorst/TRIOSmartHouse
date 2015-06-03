@@ -1,15 +1,15 @@
 class LegacyDevice (const MaxPower)
 signature:
-	visible: PowerRequired //serve visible? -> PowerSupplied;
+	visible: PowerRequired, PowerSupplied;
 	temporal domain: real
-
+{}
 	domains:
 	PowerAmount: 1..MaxPower; 
 
 	items:
 		
-		state PowerRequired(PowerAmount);
-		state PowerSupplied(PowerAmount);
+		state powerRequired(PowerAmount);
+		state powerSupplied(PowerAmount);
 
 	axioms:
 
@@ -19,6 +19,6 @@ signature:
 		formulae:
 		
 		Definition of power consumption:
-		(PowerRequired(p)&PowerSupplied(p1)) -> (p=p1)|(p1=0);
+		(powerRequired(p)&powerSupplied(p1)) -> (p=p1)|(p1=0);
 
 end;

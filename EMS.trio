@@ -285,7 +285,7 @@ signature:
 			in order to resume the execution.
 		*/
 		RestoreFromBlackout:
-		UpToNow(blackoutReceive) & NowOn(not blackoutReceive) -> /*(ex(p)(legacyReq1(p))-> legacyPower1(p)) serve per i legacy?*/ & (ex(i,t)(washState(i,t)&t>0)-> msgToWash(i,Start)) & (ex(i,t)(ovenState(i,t)&t>0)-> msgToOven(i,Start)) & (ex(i,t)(refrState(i,t)&t>0)-> msgToRefrigerator(i,Start)); 
+		UpToNow(blackoutReceive) & NowOn(not blackoutReceive) -> (ex(p)(legacyReq1(p))-> legacyPower1(p)) & (ex(i,t)(washState(i,t)&t>0)-> msgToWash(i,Start)) & (ex(i,t)(ovenState(i,t)&t>0)-> msgToOven(i,Start)) & (ex(i,t)(refrState(i,t)&t>0)-> msgToRefrigerator(i,Start)); 
 
 		/*
 			This formula specifies that if there exist a sensor that perceive a temperature below a certain treshold in a room than we start to heat
