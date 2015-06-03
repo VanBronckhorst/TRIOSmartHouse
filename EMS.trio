@@ -60,31 +60,7 @@ signature:
 		event msgToOven(Resp);
 
 
-		/*
-			This event is triggered when a request to execute a task scheduled by the refrigerator is received through the HAN
-			@param integer: id of the task
-			@param TaskType: type of the task, i.e., May or Must
-			@param PowerAmount: amount of power requested by the task
-			@param natural: amount of time necessary to complete the task
-			@param SlotsAmount: maximum number of slots in which a task allowing load shifting can be divided		
-			@param DelayAmount: maximum delay between two slots
-			@param Bool: 1 if the task allows load shedding, 0 otherwise
-			@param Bool: 1 if the task allows load balancing, 0 otherwise
-		*/
-		event refrigeratorControl(integer,TaskType,PowerAmount,natural,SlotsAmount,DelayType,Bool,Bool);
-
-		/*
-			State that represents tha amount of power provided to the refrigerator;
-			@param real: tha amount of power provided to the refrigerator at any istant
-		*/
-		state refPower(natural);
-
-		/*
-			Event triggered when a message is sent to the refrigerator through the HAN
-			@param Resp: Start if the task can begin the execution, warn if it can't start the execution or if there is a blackout
-		*/
-		event msgToRefrigerator(Resp);
-
+		
 		/*
 			State that represents the amount of power consumed by a legacy device
 			@param real: amount of power consumed by a legacy device at any instant
@@ -171,6 +147,11 @@ signature:
 
 
 	axioms:
+		vars:
+		  	resp:Resp;
+		  	cons,cons2:real;
+		  	maxxx:real;
+
 		formulae:
 
 		/*
@@ -184,7 +165,29 @@ signature:
 		ConsumptionDefinition:
 		consumption(i) <-> washPower(a1) & ovenPower(a2) & legacyPower1(a3) & termPowerConsumption(a4) (i=a1+a2+a3+a4)  &
 		production(i) <-> windmillPower(a1) & solarPower(a2) & (i=a1+a2)  &
-		max(i) <-> production(a) & batteryPower(b) & (i = a + b + MAX_FROM_HEM);
+		max(i) <-> production(a) & batteryPower(b) & (i = a + b + MAX_FROM_HEM) &
+		consumption(cons) & consumption(cons2) -> cons2=cons &
+		production(cons) & production(cons2)-> cons=cons2;
+
+
+		/*
+			Defines that all the states that represents a power erogated or supplied are true only for 1 value at any moment
+		*/
+
+		PowerUnicity:
+		washPower(cons) & washPower(cons2)-> cons=cons2 &
+		ovenPower(cons) & ovenPower(cons2)-> cons=cons2 &
+		windmillPower(cons) & windmillPower(cons2)-> cons=cons2 &
+		solarPower(cons) & solarPower(cons2)-> cons=cons2 &
+		batteryPower(cons) & batteryPower(cons2)-> cons=cons2 &
+		legacyPower1(cons) & legacyPower1(cons2)-> cons=cons2 &
+		hemPower(cons) & hemPower(cons2)-> cons=cons2 &
+		legacyReq1(cons) & legacyReq1(cons2)-> cons=cons2 &
+
+
+
+
+
 
 		/*
 			This axiom defines the various kind of response that the EMS can send to the devices. Various scenarios are possible:
@@ -198,14 +201,31 @@ signature:
 						 	anyway in order to respect one of the requested property: a given task must finish.
 			2) Must task: - a must task doesn't allows load balancing, shedding or shifting and can't be postponed. So, when a must request is received,
 							a positive message is sent the device and the power is set to the required one
+		
+			Defines what happens when a message is sent to a device in terms of power erogated
 		*/
 		ResponsesFromEMS:
-		washControl(i,May,p,t,s,d,sh,b) & consumption(cons) & (((cons + p < max)  -> (msgToWash(Go) & washPower(p))) | (((cons + p > max) & b=1 & ex(p1)(0<p1<=p & cons+p1<max)  -> (msgToWash(Go) & washPower(p1))))) &
-		washControl(i,Must,p,t,s,d,sh,b) -> msgToWash(Go) & washPower(p) &
+		washControl(i,May,p,t,s,d,sh,b) & consumption(cons) & max(maxxx) & (((cons + p < maxxx)  -> (msgToWash(Go) & washPower(p))  &
+		washControl(i,Must,p,t,s,d,sh,b) -> msgToWash(Go) &
 		washControl(i,May,p,t,s,d,sh,0) & consumption(cons) & (cons + p > max)  -> (msgToWash(Warn) & washPower(0) & SomF(msgToWash(Go))) &
 		washControl(i,May,p,t,s,d,sh,1) & consumption(cons) & not ex(p1)(0<p1<p & (cons + p1 < max))  -> (msgToWash(Warn) & washPower(0) & SomF(msgToWash(Go))) &
+		washControl(i,May,p,t,s,d,sh,1) & consumption(cons) & max(maxxx) & ex(p1)(0<p1<p & (cons + p1 < maxxx))  ->  msgToWash(Go) & washPower(p1)
 
-		ovenControl(i,Must,p,t,s,d,sh,b) -> msgToOven(Go) & ovenPower(p)
+		msgToWash(Go) -> washPower(p) & p>0
+        msgToWash(Go) & washControl(i,Must,p,t,s,d,sh,b) -> washPower(p)
+
+
+		ovenControl(i,Must,p,t,s,d,sh,b) -> msgToOven(Go)
+		msgToOven(Go) & ovenControl(i,Must,p,t,s,d,sh,b) -> ovenPower(p)
+
+
+		/*
+			Ensures that for every request a message is sent back
+		*/
+
+		ResponseEnsurance:
+		washControl(i,m,p,t,s,d,sh,b)->msgToWash(resp)
+		ovenControl(i,m,p,t,s,d,sh,b)->msgToOven(resp)
 
 		/*
 			This formula specifies that:
