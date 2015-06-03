@@ -1,0 +1,26 @@
+class SmartHouse():
+import: 
+		EMS,HAN,device,WashingMachine,Oven,Windmill,Sensor,Heating,Solar,HEM;
+
+modules:
+		WM : WashingMachine[MaxPower is 1500,MaxSlots is 5,MaxDelay is 500];
+		OV : Oven[MaxPower is 2000];
+		LEG: Legacy;
+		EMS : EMS[MAXFromHEN is 20000];
+		HAN : HAN[MAX_DELAY is 5];
+		HEN : HEM[MAX_POW is 20000,MAX_OVF is 1.3,MAX_TIME is 300 ];
+		Windmill : Windmill;
+		SolarPanel : Solar;
+
+connections:
+		(direct WM.powerSupplied, EMS.washPower);		
+		(direct OV.powerSupplied, EMS.ovenPower);
+		(direct WM.requestTask, HAN.washIn);
+		(direct WM.msgFromEMS, HAN.washOut);
+		(direct EMS.washControl, HAN.washToEMS);
+		(direct EMS.msgToWash, HAN.emsToWash);
+		(direct OV.requestTask, HAN.ovenIn);
+		(direct OV.msgFromEMS, HAN.ovenOut);
+		(direct EMS.ovenControl, HAN.ovenToEMS);
+		(direct EMS.msgToOven, HAN.emsToOven);
+		(direct Windmill.powerErogated, EMS.windPower);
