@@ -75,12 +75,15 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 				i, i1: natural;
 				m,m2: TaskType;
 				p,p2: PowerAmount;
-				t,t2: natural;
+				t,t2,tot: natural;
 				s,s2: SlotsAmount;
 				d,d2: DelayType;
 				sh,sh2: Bool;
 				b,b2: Bool;
 				resp: Resp;
+				e: real;
+				k: natural;
+				pause: real;
 
 
 			formulae:
@@ -152,7 +155,7 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 					msgFromEMS(i,Warn) -> performingTask(i,t) & powerSupplied(0);
 
 				PerformingOnlyIfRequest:
-					performingTask(i,t) <-> SomP(requestTask(i,m,p,t,st,d,sh,b)) & SomP(msgFromEMS(i,Start));
+					performingTask(i,t) <-> SomP(requestTask(i,m,p,t,s,d,sh,b)) & SomP(msgFromEMS(i,Start));
 
 				/*
 					It defines the time to live of a task that is contained in the state performingTask(i,t)
@@ -167,7 +170,7 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 					Finally it "computes" the value of remaining energy.
 				*/
 				RemainingEnergyDefinition:
-					(remainingEnergy(i,e) & e>0) -> SomF(remainingEnergy(i,0) | SomP(requestTask(i,m,p,t1,s,d,1)) &
+					(remainingEnergy(i,e) & e>0) -> SomF(remainingEnergy(i,0) | SomP(requestTask(i,m,p,t,s,d,sh,1)) &
 					UpToNow(remainingEnergy(i,e)) -> Until(remainingEnergy(i,e1) & e1<=e,(msgFromEMS(i2,Start) & i2<>i)) &
 					Past(remainingEnergy(i,e),t) & Lasted(powerSupplied(p),t) -> remainingEnergy(i,e1) & e1 = e - p*t;
 				
