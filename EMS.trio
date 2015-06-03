@@ -149,8 +149,11 @@ signature:
 	axioms:
 		vars:
 		  	resp:Resp;
-		  	cons,cons2:real;
+		  	cons,cons2,a1,a2,a3,a4:real;
 		  	maxxx:real;
+		  	m,p,p1,t,t1,t2,s,d:real;
+		  	i:real;
+		  	sh,b: {0..1}
 
 		formulae:
 
@@ -255,7 +258,7 @@ signature:
 
 
 		OverflowMeasuresShift:
-		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & washPower(i) & i>0 -> (Lasts(washPower(0),d) | WithinF(consumption+p<max,d) ) &
+		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & washPower(i) & i>0 -> (Lasts(washPower(0),d) | WithinF(consumption+p<maxxx & max(maxxx),d) ) &
 		consumption(cons) & (cons+p<max) & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & t>0 & washPower(0) -> washPower(p)
 
 

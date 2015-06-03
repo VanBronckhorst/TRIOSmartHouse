@@ -25,6 +25,9 @@ inherit device:
 
 	axioms:
 
+		vars:
+		t,i,t1:natural;
+
 		formulae:
 
 
