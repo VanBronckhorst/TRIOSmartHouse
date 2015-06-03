@@ -1,26 +1,63 @@
 class SmartHouse():
+{}
 import: 
-		EMS,HAN,device,WashingMachine,Oven,Windmill,Sensor,Heating,Solar,HEM;
+		EMS,HAN,Device,WashingMachine,Oven,Windmill,TemperatureSensor,Heating,Solar,HEM,Battery;
 
 modules:
 		WM : WashingMachine[MaxPower is 1500,MaxSlots is 5,MaxDelay is 500];
 		OV : Oven[MaxPower is 2000];
 		LEG: Legacy;
+		HT: Heating
+		BAT: Battery
 		EMS : EMS[MAXFromHEN is 20000];
 		HAN : HAN[MAX_DELAY is 5];
-		HEN : HEM[MAX_POW is 20000,MAX_OVF is 1.3,MAX_TIME is 300 ];
+		HEM : HEM[MAX_POW is 20000,MAX_OVF is 1.3,MAX_TIME is 300 ];
+		TS : TemperatureSensor
 		Windmill : Windmill;
 		SolarPanel : Solar;
 
 connections:
-		(direct WM.powerSupplied, EMS.washPower);		
+		//oven
 		(direct OV.powerSupplied, EMS.ovenPower);
-		(direct WM.requestTask, HAN.washIn);
-		(direct WM.msgFromEMS, HAN.washOut);
-		(direct EMS.washControl, HAN.washToEMS);
-		(direct EMS.msgToWash, HAN.emsToWash);
 		(direct OV.requestTask, HAN.ovenIn);
 		(direct OV.msgFromEMS, HAN.ovenOut);
+
+		//washing machine
+		(direct WM.powerSupplied, EMS.washPower);		
+		(direct WM.requestTask, HAN.washIn);
+		(direct WM.msgFromEMS, HAN.washOut);
+
+		//heating
+		(direct HT.powerConsumption, EMS.termPowerConsumption);
+		(direct HT.heatingRoom, EMS.roomHeating);
+
+		//batteries
+		(direct BAT.full, EMS.batteryFull);
+		(direct BAT.powerErogated, EMS.batteryPower);
+		(direct BAT.powerReceived, EMS.chargeBattery);
+
+		//windmill
+		(direct Windmill.powerErogated, EMS.windPower);
+
+		//solar
+		(direct SolarPanel.powerErogated, EMS.solarPower);
+
+		//legacy
+		(direct LEG.powerSupplied, EMS.legacyPower1);
+		(direct LEG.powerRequired, EMS.legacyReq1);
+
+		//HEM
+		(direct HEM.blackout, EMS.blackoutReceived);
+		(direct HEM.powerErogated, EMS.hemPower);
+
+		//temperature sensor
+		(direct TS.data, EMS.termalData);
+
+
+		//HAN-EMS
+		(direct EMS.washControl, HAN.washToEMS);
+		(direct EMS.msgToWash, HAN.emsToWash);
+
 		(direct EMS.ovenControl, HAN.ovenToEMS);
 		(direct EMS.msgToOven, HAN.emsToOven);
-		(direct Windmill.powerErogated, EMS.windPower);
+end
