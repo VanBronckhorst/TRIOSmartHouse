@@ -218,6 +218,10 @@ signature:
 		ovenControl(i,Must,p,t,s,d,sh,b) -> msgToOven(Go)
 		msgToOven(Go) & ovenControl(i,Must,p,t,s,d,sh,b) -> ovenPower(p)
 
+		PowerIfRequested:
+		ovenPower(p) & p>0 -> SomP(ovenControl(i,Must,p,t,s,d,sh,b)) &
+		washPower(p1) & p1>0 -> SomP(washControl(i,May,p,t,s,d,sh,b) & (p<>p1 -> b=1)
+
 
 		/*
 			Ensures that for every request a message is sent back
