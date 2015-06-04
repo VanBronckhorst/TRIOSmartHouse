@@ -141,7 +141,8 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 				ResponseStartSupply:
 					msgFromEMS(i,Start)& Past(requestTask(i,m,p,t,s,d,sh,b),MAX_DELAY) & UpToNow(not performingTask(i,t2)) -> NowOn(performingTask(i,t)) & powerSupplied(p1) & p1>0;
 					
-
+				/*
+				*/
 				StartAfterBlackout:
 					msgFromEMS(i,Start) & SomP(msgFromEMS(i,Warn)) & performingTask(i,t2) -> powerSupplied(p) & p>0;
 
@@ -170,7 +171,7 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 					Finally it "computes" the value of remaining energy.
 				*/
 				RemainingEnergyDefinition:
-					(remainingEnergy(i,e) & e>0) -> SomF(remainingEnergy(i,0) | SomP(requestTask(i,m,p,t,s,d,sh,1)) &
+					(remainingEnergy(i,e) & e>0) & not(SomP(requestTask(i,m,p,t,s,d,sh,1))) -> SomF(remainingEnergy(i,0) &
 					UpToNow(remainingEnergy(i,e)) -> Until(remainingEnergy(i,e1) & e1<=e,(msgFromEMS(i2,Start) & i2<>i)) &
 					Past(remainingEnergy(i,e),t) & Lasted(powerSupplied(p),t) -> remainingEnergy(i,e1) & e1 = e - p*t;
 				

@@ -4,7 +4,7 @@ signature:
 		washControl, msgToWash, msgToOven, ovenControl, refrigeratorControl, msgToRefrigerator, termPowerConsumption, roomHeating, refPower, 
 		termalData, hemPower, blackoutReceive, legacyPower1, solarPower, windmillPower, chargeBattery, batteryPower, batteryFull, legacyReq1;
 	domains:
-		Resp: {Go,Warn};
+		Resp: {Start,Warn};
 
 
 	items:
@@ -144,6 +144,12 @@ signature:
 		*/
 		state batteryFull;
 
+		state washState(integer, real, real);
+
+		state ovenState(integer, real, real);
+
+		state washStopCounter(integer, natural);
+
 
 
 	axioms:
@@ -208,18 +214,24 @@ signature:
 			Defines what happens when a message is sent to a device in terms of power erogated
 		*/
 		ResponsesFromEMS:
-		washControl(i,May,p,t,s,d,sh,b) & consumption(cons) & max(maxxx) & (((cons + p < maxxx)  -> (msgToWash(Go) & washPower(p))  &
-		washControl(i,Must,p,t,s,d,sh,b) -> msgToWash(Go) &
-		washControl(i,May,p,t,s,d,sh,0) & consumption(cons) & (cons + p > max)  -> (msgToWash(Warn) & washPower(0) & SomF(msgToWash(Go))) &
-		washControl(i,May,p,t,s,d,sh,1) & consumption(cons) & not ex(p1)(0<p1<p & (cons + p1 < max))  -> (msgToWash(Warn) & washPower(0) & SomF(msgToWash(Go))) &
-		washControl(i,May,p,t,s,d,sh,1) & consumption(cons) & max(maxxx) & ex(p1)(0<p1<p & (cons + p1 < maxxx))  ->  msgToWash(Go) & washPower(p1)
+		washControl(i,May,p,t,s,d,sh,b) & consumption(cons) & max(maxxx) & (cons + p < maxxx)  -> (msgToWash(i,Start) & washPower(p)) &
+		washControl(i,Must,p,t,s,d,sh,b) -> msgToWash(i,Start) & washPower(p) &
+		washControl(i,May,p,t,s,d,sh,0) & consumption(cons) & (cons + p > max)  -> (msgToWash(i,Warn) & washPower(0) & SomF(msgToWash(i,Start) & washPower(p)) &
+		washControl(i,May,p,t,s,d,sh,1) & consumption(cons) & not ex(p1)(0<p1<p & (cons + p1 < max))  -> (msgToWash(i,Warn) & washPower(0) & SomF(msgToWash(i,Start)) & washPower(p1)) &
+		washControl(i,May,p,t,s,d,sh,1) & consumption(cons) & max(maxxx) & ex(p1)(0<p1<p & (cons + p1 < maxxx))  ->  msgToWash(i,Start) & washPower(p1)
 
-		msgToWash(Go) -> washPower(p) & p>0
-        msgToWash(Go) & washControl(i,Must,p,t,s,d,sh,b) -> washPower(p)
+		msgToWash(i,Start) -> washPower(p) & p>0
+        msgToWash(i,Start) & washControl(i,Must,p,t,s,d,sh,b) -> washPower(p)
 
 
-		ovenControl(i,Must,p,t,s,d,sh,b) -> msgToOven(Go)
-		msgToOven(Go) & ovenControl(i,Must,p,t,s,d,sh,b) -> ovenPower(p)
+		ovenControl(i,Must,p,t,s,d,sh,b) -> msgToOven(i,Start)
+		msgToOven(i,Start) & ovenControl(i,Must,p,t,s,d,sh,b) -> ovenPower(p)
+
+
+		ConsequenceOfStartMessage:
+		msgToWash(i,Start) -> SomP(washControl(i,m,p,t,s,d,sh,b)) & washStopCounter(i,0) & washState(i,t,p*t);
+		msgToOven(i,Start) -> SomP(ovenControl(i,m,p,t,s,d,sh,b)) & ovenState(i,t,p*t);
+
 
 		PowerIfRequested:
 		ovenPower(p) & p>0 -> SomP(ovenControl(i,Must,p,t,s,d,sh,b)) &
@@ -229,7 +241,6 @@ signature:
 		/*
 			Ensures that for every request a message is sent back
 		*/
-
 		ResponseEnsurance:
 		washControl(i,m,p,t,s,d,sh,b)->msgToWash(resp)
 		ovenControl(i,m,p,t,s,d,sh,b)->msgToOven(resp)
@@ -244,22 +255,22 @@ signature:
 		*/
 		PowerBalance:
 		consumption(con) & production(prod) & hemPower(bought) & batteryPower(bat) -> con<=production+bought+bat &
-		(washPower(w) & ovenPower(o) & termPowerConsumption(tp) & refPower(r) & legacyPower1(l) & windmillPower(p) & solarPower(s) & (w+o+l+r+tp=p+s)) -> (hemPower(0) & batteryPower(0)) &
+		(washPower(w) & ovenPower(o) & termPowerConsumption(tp) & legacyPower1(l) & windmillPower(p) & solarPower(s) & (w+o+l+tp=p+s)) -> (hemPower(0) & batteryPower(0)) &
 		(hemPower>=MAX_FROM_HEM) -> overflow &
-		(washPower(w) & ovenPower(o) & termPowerConsumption(tp) & refPower(r) & legacyPower1(l) & windmillPower(p) & solarPower(s) & (w+o+l+r+tp<p+s)) -> chargeBattery(i) & i=p+s) ;
+		(washPower(w) & ovenPower(o) & termPowerConsumption(tp) & legacyPower1(l) & windmillPower(p) & solarPower(s) & (w+o+l+tp<p+s)) -> chargeBattery(i) & i=p+s) ;
 
 		/*
 			If there is an overflow, and a sheddable task is in execution, than this task is interrupted(power set to 0) and a warning message is sent
 			to the device
 		*/
 		OverflowMeasuresShed:
-		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,1,b)) ->  msgToWash(Warn) & washPower(0);
+		overflow & washState(i,t,e) & SomP(washControl(i,May,p,t,s,d,1,b)) ->  msgToWash(i,Warn) & NowOn(washPower(0));
 
 
 
 		OverflowMeasuresShift:
-		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & washPower(i) & i>0 -> (Lasts(washPower(0),d) | WithinF(consumption+p<maxxx & max(maxxx),d) ) &
-		consumption(cons) & (cons+p<max) & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & t>0 & washPower(0) -> washPower(p)
+		overflow & washState(i,t,e) & stopCounter(i,nstop) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>nstop & washPower(i) & i>0 -> (Lasts(washPower(0),d) | WithinF(consumption+p<maxxx & max(maxxx),d) ) &
+		consumption(cons) & (cons+p<max) & washState(i,t) & SomP(washControl(i,May,p,t1,s,d,sh,b)) & t>0 & washPower(0) -> NowOn(washPower(p))
 
 
 		/*
@@ -268,24 +279,42 @@ signature:
 			In our system only task scheduled by the washing machine, the refrigerator and  the heating system can be balanced
 		*/
 		OverflowMeasuresBalance:
-		overflow & washState(i,t1) & t1>0 & SomP(washControl(i,May,p,t,s,d,sh,1)) & washPower(nowWash) & nowWash > 0 & max(tot)& ex(z)(z>0 & z<p & consumption(now) & (now-nowWash+z=tot) )  -> washPower(z)
+		overflow & washState(i,t1,e) & t1>0 & SomP(washControl(i,May,p,t,s,d,sh,1)) & washPower(nowWash) & nowWash > 0 & max(tot)& ex(z)(z>0 & z<p & consumption(now) & (now-nowWash+z=tot) )  -> NowOn(washPower(z))
 
-		overflow & ex(i)(roomHeating(i) & termPowerConsumption(nowTerm) & nowTerm > 0  & max(tot) & ex(z) (z>0 & consumption(now) & (now-nowTerm+z<=tot)) -> termPowerConsumption(z)
+		overflow & ex(i)(roomHeating(i) & termPowerConsumption(nowTerm) & nowTerm > 0  & max(tot) & ex(z) (z>0 & consumption(now) & (now-nowTerm+z<=tot)) -> NowOn(termPowerConsumption(z))
 
-		//manca refrigerator
 
+
+		WashStopCounterDefinition:
+		washStopCounter(i,nstop) -> washState(i,t,e) & t>0 & e>0
+		washStopCounter(i,nstop) -> SomP(washStopCounter(i,0))
+		washState(i,t,e) & e>0 & t>0 & washPower(0) & not(blackoutReceive) & UpToNow(washPower(p) & p!=0) & UpToNow(stopCounter(i,nstop)) -> NowOn(stopCounter(i,nstop+1))
+		washStopCounter(i,nstop) & nstop > 0 -> SomP(requestTask(i,May,p,tot,s,d,sh,b) & s > 0)
+
+
+
+		WashStateDefinition:
+		washState(i,t,e) & e>0 & t>0 & not(SomP(washControl(i,m,p,t,s,d,sh,1))) -> SomF(washState(i,0,0)) 
+		UpToNow(washState(i,t,e)) -> Until(washState(i,t1,e1) & e1<=e,(msgToWash(i2,Start) & i2<>i)) &
+		Past(washState(i,t,e),t1) & Lasted(washPower(p),t1) -> washState(i,t2,e1) & e1=e-p*t1 & t2=e1/p;
+
+		OvenStateDefinition:
+		ovenState(i,t,e) & e>0 & t>0 & not(SomP(ovenControl(i,m,p,t,s,d,sh,1))) -> SomF(ovenState(i,0,0) 
+		UpToNow(ovenState(i,t,e)) -> Until(ovenState(i,t1,e1) & e1<=e,(msgToOven(i2,Start) & i2<>i)) &
+		Past(ovenState(i,t,e),t1) & Lasted(ovenPower(p),t1) -> ovenState(i,t2,e1) & e1=e-p*t1 & t2=e1/p;
+		
 		/*
 			if a blackout is in progress the cosumption is set to 0 and a warning message is sent to the devices that are connected through the HAN.
 		*/	
 		OnBlackout:
-		blackoutReceive -> consumption(0) & msgToWash(Warn) & msgToOven(Warn) & msgToRefrigerator(Warn);
+		blackoutReceive & ovenState(i,t,e) & washState(i1,t1,e1) -> consumption(0) & msgToWash(i,Warn) & msgToOven(i1,Warn);
 
 		/*
 			If a blackout is just finished, and some tasks were executing before the blackout then a message to all the devices with pending task is sent,
 			in order to resume the execution.
 		*/
 		RestoreFromBlackout:
-		UpToNow(blackoutReceive) & NowOn(not blackoutReceive) -> (ex(p)(legacyReq1(p))-> legacyPower1(p)) & (ex(i,t)(washState(i,t)&t>0)-> msgToWash(i,Start)) & (ex(i,t)(ovenState(i,t)&t>0)-> msgToOven(i,Start)) & (ex(i,t)(refrState(i,t)&t>0)-> msgToRefrigerator(i,Start)); 
+		UpToNow(blackoutReceive) & NowOn(not blackoutReceive) -> (ex(p)(legacyReq1(p))-> legacyPower1(p)) & (ex(i,t,e)(washState(i,t,e)&t>0&e>0)-> msgToWash(i,Start)) & (ex(i,t,e)(ovenState(i,t,e)&t>0&e>0)-> msgToOven(i,Start)); 
 
 		/*
 			This formula specifies that if there exist a sensor that perceive a temperature below a certain treshold in a room than we start to heat
