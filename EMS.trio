@@ -1,7 +1,7 @@
 class EMS(const MAX_FROM_HEM):
 signature:
 	visible: 
-		washControl, msgToWash, msgToOven, ovenControl, refrigeratorControl, msgToRefrigerator, termPowerConsumption, roomHeating, refPower, 
+		washControl, msgToWash, msgToOven, ovenControl, termPowerConsumption, roomHeating, 
 		termalData, hemPower, blackoutReceive, legacyPower1, solarPower, windmillPower, chargeBattery, batteryPower, batteryFull, legacyReq1;
 	domains:
 		Resp: {Start,Warn};
@@ -32,7 +32,7 @@ signature:
 			Event triggered when a message is sent to the washing machine through the HAN
 			@param Resp: Start if the task can begin the execution, warn if it can't start the execution or if there is a blackout
 		*/
-		event msgToWash(Resp);
+		event msgToWash(integer,Resp);
 		
 		/*
 			This event is triggered when a request to execute a task scheduled by the oven is received through the HAN
@@ -57,7 +57,7 @@ signature:
 			Event triggered when a message is sent to the oven through the HAN
 			@param Resp: Start if the task can begin the execution, warn if there is a blackout
 		*/
-		event msgToOven(Resp);
+		event msgToOven(integer,Resp);
 
 
 		
@@ -121,7 +121,7 @@ signature:
 			@param natural: number of the room
 			@param integer: temperature treshold in a room at any istant
 		*/
-		state termTreshold(natural,integer);
+		state termThreshold(natural,integer);
 
 		/*
 			A state that represents the amount of power consumed by the heating system
@@ -143,6 +143,8 @@ signature:
 			A state that represents if the battery is full charged.
 		*/
 		state batteryFull;
+
+		state chargeBattery(real);
 
 		state washState(integer, real, real);
 
@@ -182,7 +184,6 @@ signature:
 		/*
 			Defines that all the states that represents a power erogated or supplied are true only for 1 value at any moment
 		*/
-
 		PowerUnicity:
 		washPower(cons) & washPower(cons2)-> cons=cons2 &
 		ovenPower(cons) & ovenPower(cons2)-> cons=cons2 &
@@ -192,11 +193,9 @@ signature:
 		legacyPower1(cons) & legacyPower1(cons2)-> cons=cons2 &
 		hemPower(cons) & hemPower(cons2)-> cons=cons2 &
 		legacyReq1(cons) & legacyReq1(cons2)-> cons=cons2 &
-
-
-
-
-
+		washState(i,t,e) & washState(i,t1,e1) -> t=t1 & e=e1 &
+		ovenState(i,t,e) & ovenState(i,t1,e1) -> t=t1 & e=e1 &
+		washStopCounter(i,nstop) & washStopCounter(i,nstop2) -> nstop2=nstop 
 
 		/*
 			This axiom defines the various kind of response that the EMS can send to the devices. Various scenarios are possible:
@@ -210,29 +209,30 @@ signature:
 						 	anyway in order to respect one of the requested property: a given task must finish.
 			2) Must task: - a must task doesn't allows load balancing, shedding or shifting and can't be postponed. So, when a must request is received,
 							a positive message is sent the device and the power is set to the required one
-		
-			Defines what happens when a message is sent to a device in terms of power erogated
 		*/
 		ResponsesFromEMS:
-		washControl(i,May,p,t,s,d,sh,b) & consumption(cons) & max(maxxx) & (cons + p < maxxx)  -> (msgToWash(i,Start) & washPower(p)) &
-		washControl(i,Must,p,t,s,d,sh,b) -> msgToWash(i,Start) & washPower(p) &
-		washControl(i,May,p,t,s,d,sh,0) & consumption(cons) & (cons + p > max)  -> (msgToWash(i,Warn) & washPower(0) & SomF(msgToWash(i,Start) & washPower(p)) &
-		washControl(i,May,p,t,s,d,sh,1) & consumption(cons) & not ex(p1)(0<p1<p & (cons + p1 < max))  -> (msgToWash(i,Warn) & washPower(0) & SomF(msgToWash(i,Start)) & washPower(p1)) &
-		washControl(i,May,p,t,s,d,sh,1) & consumption(cons) & max(maxxx) & ex(p1)(0<p1<p & (cons + p1 < maxxx))  ->  msgToWash(i,Start) & washPower(p1)
+		washControl(i,May,p,t,s,d,sh,b) & consumption(cons) & max(maxxx) & (cons + p < maxxx)  -> (msgToWash(i,Start) & washPower(p) & washStopCounter(i,0) & washState(i,t,p*t)) &
+		washControl(i,Must,p,t,s,d,sh,b) -> msgToWash(i,Start) & washPower(p) & washStopCounter(i,0) & washState(i,t,p*t) &
+		washControl(i,May,p,t,s,d,sh,0) & consumption(cons) & (cons + p > max)  -> (msgToWash(i,Warn) & washPower(0) & SomF(msgToWash(i,Start) & washPower(p) & washStopCounter(i,0) & washState(i,t,p*t)) &
+		washControl(i,May,p,t,s,d,sh,1) & consumption(cons) & not ex(p1)(0<p1<p & (cons + p1 < max))  -> (msgToWash(i,Warn) & washPower(0) & SomF(msgToWash(i,Start) & washPower(p1) & washStopCounter(i,0) & washState(i,t,p*t)) &
+		washControl(i,May,p,t,s,d,sh,1) & consumption(cons) & max(maxxx) & ex(p1)(0<p1<p & (cons + p1 < maxxx))  ->  msgToWash(i,Start) & washPower(p1) & washStopCounter(i,0) & washState(i,t,p*t)
 
+	
+		/*
+			Defines that if a starting message is sent to the washing machine than a certain amount of power greater than 0 is provided to the device. 
+			If the request is to execute a must task, or in the past there was a request to execute that must task, but was interrupted for a blackout, 
+			than the power provided to the device is exactly the required one. 
+		*/		
+		WashStartMsgConditions:
 		msgToWash(i,Start) -> washPower(p) & p>0
-        msgToWash(i,Start) & washControl(i,Must,p,t,s,d,sh,b) -> washPower(p)
+        msgToWash(i,Start) & (washControl(i,Must,p,t,s,d,sh,b) | SomP(washControl(i,Must,p,t,s,d,sh,b))) -> washPower(p)
+
+		
+		OvenStartMsgConditions:
+		msgToOven(i,Start) & (ovenControl(i,Must,p,t,s,d,sh,b) | SomP(ovenControl(i,Must,p,t,s,d,sh,b))) -> ovenPower(p)
 
 
-		ovenControl(i,Must,p,t,s,d,sh,b) -> msgToOven(i,Start)
-		msgToOven(i,Start) & ovenControl(i,Must,p,t,s,d,sh,b) -> ovenPower(p)
-
-
-		ConsequenceOfStartMessage:
-		msgToWash(i,Start) -> SomP(washControl(i,m,p,t,s,d,sh,b)) & washStopCounter(i,0) & washState(i,t,p*t);
-		msgToOven(i,Start) -> SomP(ovenControl(i,m,p,t,s,d,sh,b)) & ovenState(i,t,p*t);
-
-
+		/* Defines that power is provided to a device only it has previously sent a request */
 		PowerIfRequested:
 		ovenPower(p) & p>0 -> SomP(ovenControl(i,Must,p,t,s,d,sh,b)) &
 		washPower(p1) & p1>0 -> SomP(washControl(i,May,p,t,s,d,sh,b) & (p<>p1 -> b=1)
@@ -266,38 +266,54 @@ signature:
 		OverflowMeasuresShed:
 		overflow & washState(i,t,e) & SomP(washControl(i,May,p,t,s,d,1,b)) ->  msgToWash(i,Warn) & NowOn(washPower(0));
 
-
-
+		/*
+			Defines that if there is an overflow, and a task that can be shifted is in execution and it wasn’t stop more than the number of allowed stop,
+			 than this task is interrupted (power set to 0) for at most the maximum amount of time specified in the initial request.
+		*/
 		OverflowMeasuresShift:
 		overflow & washState(i,t,e) & stopCounter(i,nstop) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>nstop & washPower(i) & i>0 -> (Lasts(washPower(0),d) | WithinF(consumption+p<maxxx & max(maxxx),d) ) &
 		consumption(cons) & (cons+p<max) & washState(i,t) & SomP(washControl(i,May,p,t1,s,d,sh,b)) & t>0 & washPower(0) -> NowOn(washPower(p))
-
-
+		
 		/*
 			If an overflow is in progress and it is in execution a task that can be balanced and exist a power that allows to not overcome the power threshold,
 			then the task is executed using this power.
-			In our system only task scheduled by the washing machine, the refrigerator and  the heating system can be balanced
+			In our system only task scheduled by the washing machine and the heating system can be balanced
 		*/
 		OverflowMeasuresBalance:
 		overflow & washState(i,t1,e) & t1>0 & SomP(washControl(i,May,p,t,s,d,sh,1)) & washPower(nowWash) & nowWash > 0 & max(tot)& ex(z)(z>0 & z<p & consumption(now) & (now-nowWash+z=tot) )  -> NowOn(washPower(z))
-
 		overflow & ex(i)(roomHeating(i) & termPowerConsumption(nowTerm) & nowTerm > 0  & max(tot) & ex(z) (z>0 & consumption(now) & (now-nowTerm+z<=tot)) -> NowOn(termPowerConsumption(z))
 
-
-
+		/*
+			Defines a counter that counts the number of time a task is stopped. Firstly it specifies that if a counter is counting the number of stop of
+			a certain task, than the device is executing that task (washState keeps track of the current task in execution). Secondly, it specifies 
+			that the counter start from zero. Thirdly it defines how the counter is incremented, that is: if a task is in execution and up to now a certain 
+			amount of power is provided to the device and there isn’t a blackout in progress and now the amount of power provided to the device is 0, than 
+			the counter should be incremented by one unit. Lastly it defines that if the counter is true for a certain task and for a certain number of stops
+			greater than zero, than the task must be a “May” task.
+		*/
 		WashStopCounterDefinition:
 		washStopCounter(i,nstop) -> washState(i,t,e) & t>0 & e>0
 		washStopCounter(i,nstop) -> SomP(washStopCounter(i,0))
 		washState(i,t,e) & e>0 & t>0 & washPower(0) & not(blackoutReceive) & UpToNow(washPower(p) & p!=0) & UpToNow(stopCounter(i,nstop)) -> NowOn(stopCounter(i,nstop+1))
 		washStopCounter(i,nstop) & nstop > 0 -> SomP(requestTask(i,May,p,tot,s,d,sh,b) & s > 0)
 
-
-
+		/*
+			Defines the state washState that keeps track of the current task in execution. The state washState has three arguments, the task id, 
+			the amount of time remaining for the completion of the task and the amount of energy necessary to complete the task. It specifies that 
+			energy and time will become 0 in the future except when the task allows load shedding. It then defines the monotonicity of the energy. 
+			Lastly it defines how the energy value and the time parameter change and how the energy and time parameters are correlated.
+		*/
 		WashStateDefinition:
 		washState(i,t,e) & e>0 & t>0 & not(SomP(washControl(i,m,p,t,s,d,sh,1))) -> SomF(washState(i,0,0)) 
 		UpToNow(washState(i,t,e)) -> Until(washState(i,t1,e1) & e1<=e,(msgToWash(i2,Start) & i2<>i)) &
 		Past(washState(i,t,e),t1) & Lasted(washPower(p),t1) -> washState(i,t2,e1) & e1=e-p*t1 & t2=e1/p;
 
+		/*
+			Defines the state ovenState that keeps track of the current task in execution. The state ovenState has three arguments, the task id, 
+			the amount of time remaining for the completion of the task and the amount of energy necessary to complete the task. It specifies that 
+			energy and time will become 0 in the future except when the task allows load shedding. It then defines the monotonicity of the energy. 
+			Lastly it defines how the energy value and the time parameter change and how the energy and time parameters are correlated.
+		*/
 		OvenStateDefinition:
 		ovenState(i,t,e) & e>0 & t>0 & not(SomP(ovenControl(i,m,p,t,s,d,sh,1))) -> SomF(ovenState(i,0,0) 
 		UpToNow(ovenState(i,t,e)) -> Until(ovenState(i,t1,e1) & e1<=e,(msgToOven(i2,Start) & i2<>i)) &
@@ -321,7 +337,7 @@ signature:
 			that room
 		*/
 		TermalAlarm:
-		ex(i,t,t2)(termalData(i,t) & termTreshold(i,t2) & t<t2) <-> roomHeating(i)
+		ex(i,t,t2)(termalData(i,t) & termThreshold(i,t2) & t<t2) <-> roomHeating(i)
 
 end
 
