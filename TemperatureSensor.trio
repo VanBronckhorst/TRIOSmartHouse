@@ -1,0 +1,9 @@
+class Sensor:
+signature:
+	visible: data;
+
+	items:
+
+	state data(natural,integer);
+end
+
