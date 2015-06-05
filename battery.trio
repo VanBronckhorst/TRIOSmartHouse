@@ -4,10 +4,29 @@ class Battery(const capacity):
 			full, powerErogated, powerReceived;
 {}
 	items:
+		/*
+			This state represents if the battery is charged.
+		*/
 		state full;
+		/*
+			This state represents if the battery is empty.
+		*/
 		state empty;
+		/*
+			This state represents the amount of power provided by the battery to the system.
+			@param real: the amount of power provided
+		*/
 		state powerErogated(real);
+		/*
+			This state represents the amount of power received to charge the batteries.
+			@param real: the amount of power received
+		*/
 		state powerReceived(real);
+
+		/*
+			This state represents the level of the battery.
+			@param real: the level of the battery			
+		*/
 		state batteryLevel(real);
 
 
@@ -19,25 +38,50 @@ class Battery(const capacity):
 			p:real;
 			t:real; 
 
+		/*
+			This formula defines when the battery is full. The battery is full when the batteryLevel(capacity) state is true.
+			When the battery is full then the amount of power received is equal to 0
+		*/
 		FullDefinition:
 		full <-> batteryLevel(capacity) &
 		full -> powerReceived(0);
 
+		/*
+			This formula defines when the battery is empty. The battery is empty when the batteryLevel(0) state is true.
+			When the battery is full then the amount of power provided to the system is equal to 0
+		*/
 		EmptyDefinition:
 		empty <-> batteryLevel(0) & 
 		empty -> powerErogated(0);
 
+
+		/*
+			This formula defines how the battery level changes when the battery is in charge. In particular if the battery is loaded with a power p for a 
+			certain amount of time t, then the new level will be the sum of the old value with p*t
+		*/
 		ChargingDefinition:
 		Past(batteryLevel(old),t) & Lasted(powerReceived(p),t) -> batteryLevel(now) & now=old+p*t;
 
+		/*
+			This formula defines how the battery level changes when the battery is draining power in the system. In particular if the battery is draining a power p for a 
+			certain amount of time t, then the new level will be the difference of the old value with p*t
+		*/
 		DrainingDefinition:
 		Past(batteryLevel(old,t)) & Lasted(powerErogated(p),t) -> batteryLevel(now) & now=old-p*t;
 
+		
+		/*
+			This formula defines the uniqueness of some states
+		*/
 		StateUnicityDefinition:
 		powerErogated(i) -> not ex(i1)(powerErogated(i1) & i<>i1) &
 		powerReceived(i) -> not ex(i1)(powerReceived(i1) & i<>i1) &
 		batteryLevel(i) -> not ex(i1)(batteryLevel(i1) & i<>i1);
 
+		
+		/*
+			This axiom defines that the amount of power received or provided and the battery level are always positive
+		*/
 		PositiveValue:
 		powerReceived(i) & i >= 0 &
 		powerErogated(i) & i >= 0

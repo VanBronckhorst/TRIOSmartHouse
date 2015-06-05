@@ -24,12 +24,31 @@ signature:
 
     formulae:
 
+        vars i,i1: real;
+
+        /*
+            This axioms guarantees a safety property. If the power provided by the network is more than the maximum power that can be bought multiplied with 
+            a certain threshold, than there is an immediate blackout
+        */
         PowerErogatedDefinition:
     	powerErogated(i) &  i > MAX_POW*MAX_OVF  -> blackout
 
+
+        /*
+            This axioms guarantees a safety property. If the power provided by the network is more than the maximum power that can be bought for a certain
+            amount of time than there is a blackout.
+            If there is a blackout than the power absorbed is equal to 0.
+            The blackout states hold until there is a manual restore.
+        */
         BlackoutDefinition:
     	Lasted(powerErogated(i)) &  i>MAX_POW, MAX_TIME) -> blackout
     	blackout -> powerErogated(0)
     	blackout -> Until(blackout,manualRestore)
     	blackout & manualRestore -> not blackout
+
+        /*
+            Uniqueness of power
+        */
+        PowerUnicity:
+        powerErogated(i) & powerErogated(i1) -> i=i1; 
 end

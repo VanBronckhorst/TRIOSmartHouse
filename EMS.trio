@@ -144,12 +144,36 @@ signature:
 		*/
 		state batteryFull;
 
+		/*
+			A state that represents that the battery is in charge with a given power.
+			@param real: the amount of power provided to the battery
+		*/
 		state chargeBattery(real);
 
+		/*
+			A state that represents that the washing machine is executing a task and that a certain amount of time and a certain amount of energy
+			is needed to complete the task.
+			@param integer: the id of task
+			@param real: the amount of time remaining
+			@param real: the amount of energy remaining
+		*/
 		state washState(integer, real, real);
 
+
+		/*
+			A state that represents that the oven  is executing a task and that a certain amount of time and a certain amount of energy
+			is needed to complete the task.
+			@param integer: the id of task
+			@param real: the amount of time remaining
+			@param real: the amount of energy remaining
+		*/
 		state ovenState(integer, real, real);
 
+		/*
+			A state use to count how many times a task has been stopped so far.
+			@param integer: the id of task
+			@param natural: number of times a task was stopped
+		*/
 		state washStopCounter(integer, natural);
 
 
@@ -227,12 +251,17 @@ signature:
 		msgToWash(i,Start) -> washPower(p) & p>0
         msgToWash(i,Start) & (washControl(i,Must,p,t,s,d,sh,b) | SomP(washControl(i,Must,p,t,s,d,sh,b))) -> washPower(p)
 
-		
+		/*
+			Defines that if a starting message was sent to the oven than there is a request to execute that task or there was a request to execute 
+			that task, but was interrupted because of a blackout, than the power provided to the device is exactly the required one.
+		*/
 		OvenStartMsgConditions:
 		msgToOven(i,Start) & (ovenControl(i,Must,p,t,s,d,sh,b) | SomP(ovenControl(i,Must,p,t,s,d,sh,b))) -> ovenPower(p)
 
 
-		/* Defines that power is provided to a device only it has previously sent a request */
+		/* 
+			Defines that power is provided to a device only it has previously sent a request 
+		*/
 		PowerIfRequested:
 		ovenPower(p) & p>0 -> SomP(ovenControl(i,Must,p,t,s,d,sh,b)) &
 		washPower(p1) & p1>0 -> SomP(washControl(i,May,p,t,s,d,sh,b) & (p<>p1 -> b=1)

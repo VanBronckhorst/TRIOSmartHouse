@@ -35,18 +35,24 @@ signature:
 
 			
 			/*
-				This formulae ensure that the task 1 is requested to the ems after the specified Delay Time
+				This formulae ensure that the task 1 is requested to the ems at least after the specified Delay Time. If another task is in exexution
+				the request is delayed.
+				Task 1 is a must task
 			*/
 			ScheduleTask1:
-				startTask1(t) -> Futr(requestTask(i,Must,DEV_POW,TASK_TIME,1,0,0) ,t) &
-				requestTask(i,Must,DEV_POW,1,0,0) -> ex(t1)( Past(startTask1(t1),t1)); 
+				startTask1(t) & Futr(not ex(i)(perfomingTask(i,t1) & t1 > 0),t) -> Futr(requestTask(i,Must,DEV_POW,TASK_TIME,1,0,0,0) ,t) &
+				startTask1(t) & ex(i1)(Futr(perfomingTask(i1,t1) & t1 > 0,t) -> (Until(not(requestTask(i,Must,DEV_POW,TASK_TIME,1,0,0,0)),perfomingTask(i1,t1) & t1 > 0) & SomF(requestTask(i,Must,DEV_POW,TASK_TIME,1,0,0,0),t)) &
+				requestTask(i,Must,DEV_POW,TASK_TIME,1,0,0,0) -> ex(t1)(SomP(startTask1(t))); 
 
 			/*
-				This formulae ensure that the task 2 is requested to the ems after the specified Delay Time
+				This formulae ensure that the task 2 is requested to the ems at least after the specified Delay Time. If another task is in execution
+				the request is delayed.
+				Task 2 is a may task which can be shed,balanced and shifted in at most five blocks.
 			*/
 			ScheduleTask2:
-				startTask2(t) -> Futr(requestTask(i,May,DEV_POW,TASK_TIME,3,300,0) ,t) &
-				requestTask(i,May,DEV_POW,3,300,0) -> ex(t1)( Past(startTask2(t1),t1));
+				startTask2(t) & Futr(not ex(i)(perfomingTask(i,t1) & t1 > 0),t) -> Futr(requestTask(i,May,DEV_POW,TASK_TIME,5,300,1,1) ,t) &
+				startTask2(t) & ex(i1)(Futr(perfomingTask(i1,t1) & t1 > 0,t) -> (Until(not(requestTask(i,May,DEV_POW,TASK_TIME,5,300,1,1)),perfomingTask(i1,t1) & t1 > 0) & SomF(requestTask(i,Must,DEV_POW,TASK_TIME,5,300,1,1),t)) &
+				requestTask(i,May,DEV_POW,TASK_TIME,5,300,1,1) -> ex(t1)(SomP(startTask2(t))); 
 
 end
 			 	

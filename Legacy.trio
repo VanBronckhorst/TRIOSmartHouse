@@ -8,7 +8,16 @@ signature:
 
 	items:
 		
+		/*
+			State that represents the amount of power required by a legacy device
+			@param PowerAmount: the amount of power required
+		*/
 		state powerRequired(PowerAmount);
+
+		/*
+			State that represents the amount of power supplied to a legacy device
+			@param PowerAmount: the amount of power supplied
+		*/		
 		state powerSupplied(PowerAmount);
 
 	axioms:
@@ -18,6 +27,10 @@ signature:
 
 		formulae:
 		
+		/*
+			Axiom that defines that the amount of power required by a legacy device is always equal to the power supplied, unless the power supplied
+			is equal to 0
+		*/
 		Definition of power consumption:
 		(powerRequired(p)&powerSupplied(p1)) -> (p=p1)|(p1=0);
 

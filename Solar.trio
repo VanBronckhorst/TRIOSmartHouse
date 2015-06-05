@@ -1,10 +1,14 @@
-class Windmill:
+class Solar:
 signature:
-	visible: powerErogated();
+	visible: powerErogated;
 
 	items:
 
-	state powerErogated(natural);
+	/*
+		State that represent the amount of power currently produced by the solar panel
+		@param real: the amount of power produced
+	*/
+	state powerErogated(real);
 
 
 end  		

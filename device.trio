@@ -142,19 +142,36 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 					msgFromEMS(i,Start)& Past(requestTask(i,m,p,t,s,d,sh,b),MAX_DELAY) & UpToNow(not performingTask(i,t2)) -> NowOn(performingTask(i,t)) & powerSupplied(p1) & p1>0;
 					
 				/*
+					If there was a blackout while the device was executing the task and the device received a start message, then the  device resume the task
+					and the power supplied is greater than 0
 				*/
 				StartAfterBlackout:
 					msgFromEMS(i,Start) & SomP(msgFromEMS(i,Warn)) & performingTask(i,t2) -> powerSupplied(p) & p>0;
 
+				/*
+					If there was a request to execute a must task and the device receives a start message than the device execute the task with the required power
+					for the required amount of time or during the execution a warning message is received, that means that a blackout is in progress.
+				*/
 				ResponseMustStartSupply:
 					msgFromEMS(i,Start) & Past(requestTask(i,Must,p,t,s,d,sh,0),MAX_DELAY) -> Lasts(powerSupplied(p),t) | WithinF(msgFromEMS(i,Warn),t) 
 
+				/*
+					This axiom guarantees that if the power supplied if p>0 than the device is performing a task and in the past it has asked the EMS
+					to execute that task
+				*/
 				PowerIfExecuting:
-					powerSupplied(p) -> performingTask(i,t) & t > 0 & SomP(requestTask(i,m,p1,t,s,d,sh,b))
+					powerSupplied(p) & p > 0 -> performingTask(i,t) & t > 0 & SomP(requestTask(i,m,p1,t,s,d,sh,b))
 
+				/*
+					If a warning message is received than the task is "still in execution", but the power supplied is equal to 0.
+				*/
 				WarningMessage:
 					msgFromEMS(i,Warn) -> performingTask(i,t) & powerSupplied(0);
 
+				/*
+					A task is in execution if and only if in the past there was a request for that task and a start message was received from
+					the EMS
+				*/
 				PerformingOnlyIfRequest:
 					performingTask(i,t) <-> SomP(requestTask(i,m,p,t,s,d,sh,b)) & SomP(msgFromEMS(i,Start));
 
