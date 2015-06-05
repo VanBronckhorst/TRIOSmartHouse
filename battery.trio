@@ -2,7 +2,7 @@ class Battery(const capacity):
 	signature:
 		visible:
 			full, powerErogated, powerReceived;
-{}
+
 	items:
 		/*
 			This state represents if the battery is charged.

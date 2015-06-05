@@ -1,7 +1,6 @@
 class HEM(const MAX_POW,const MAX_TIME,const MAX_OVF):
 signature:
     visible powerErogated, blackout, manualRestore;
-{}
     items:
 
         /*

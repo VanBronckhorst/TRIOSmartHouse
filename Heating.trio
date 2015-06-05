@@ -2,7 +2,6 @@ class Heating:
 
 signature: 
 	visible heatingRoom, powerConsumption;
-	{}
 	items:
 
 		/*

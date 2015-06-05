@@ -1,14 +1,14 @@
 class SmartHouse():
-{}
+
 import: 
 		EMS,HAN,Device,WashingMachine,Oven,Windmill,TemperatureSensor,Heating,Solar,HEM,Battery;
 
 modules:
 		WM : WashingMachine[MaxPower is 1500,MaxSlots is 5,MaxDelay is 500];
 		OV : Oven[MaxPower is 2000];
-		LEG: Legacy;
+		LEG: Legacy[MaxPower is 2000];
 		HT: Heating
-		BAT: Battery
+		BAT: Battery[capacity is 20000000]
 		EMS : EMS[MAXFromHEN is 20000];
 		HAN : HAN[MAX_DELAY is 5];
 		HEM : HEM[MAX_POW is 20000,MAX_OVF is 1.3,MAX_TIME is 300 ];
