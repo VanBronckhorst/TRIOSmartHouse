@@ -243,7 +243,7 @@ signature:
 
 	
 		/*
-			Defines that if a starting message is sent to the washing machine than a certain amount of power greater than 0 is provided to the device. 
+			Defines that if a starting message is sent to the washing machine then a certain amount of power greater than 0 is provided to the device. 
 			If the request is to execute a must task, or in the past there was a request to execute that must task, but was interrupted for a blackout, 
 			than the power provided to the device is exactly the required one. 
 		*/		

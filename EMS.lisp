@@ -5,18 +5,28 @@
 (defconstant GO 1)
 (defconstant WARN 0)
 (defconstant MAY 0)
+(defconstant TRUE 1)
+(defconstant FALSE 0)
 (defconstant MUST 1)
 (defconstant MAX_FROM_HEM 2)
 
 (defvar pow-domain (loop for i from 0 to 5 collect i))
+(defvar time-domain (loop for i from 0 to 5 collect i))
+(defvar slot-domain (loop for i from 0 to 3 collect i))
 (defvar dev-domain (loop for i from 0 to 2 collect i))
+(defvar taskid-domain (loop for i from 0 to 2 collect i))
+(defvar bool '(TRUE FALSE))
+(defvar task-type '(MAY MUST))
+
 (define-variable consumption pow-domain)
 (define-variable production pow-domain)
 (define-variable washPower dev-domain)
 (define-variable ovenPower dev-domain)
 (define-variable legPower dev-domain)
 (define-variable solarPower dev-domain)
-(define-variable windmillPower dev-domain)
+(define-variable windmillPower 'dev-domain)
+(define-variable ovenControl (taskid-domain task-type pow-domain time-domain slot-domain time-domain bool bool))
+(define-variable washControl (taskid-domain task-type pow-domain time-domain slot-domain time-domain bool bool))
 
 
 ;axioms  
@@ -109,6 +119,19 @@
 	)
 	)
 
+(defvar wash-start-msg-conds-1
+	( -E- i taskid-domain(-> (-P- msgToWash i GO)
+	  					   (-E- p pow-domain(&& (-P- washPower p) (> p 0)))
+	  					))
+	)
+
+(defvar wash-start-msg-conds-2
+	( -E- i taskid-domain(-> (&& (-P- msgToWash i GO) (|| () () ))
+	  					   (-E- p pow-domain(&& (-P- washPower p) (> p 0)))
+	  					))
+	)
+
+
 
 ;the system
 (defvar the-system  
@@ -126,9 +149,13 @@
 )))      
 
 ;;false assertion
+;(defvar false-conjecture
+ ; (som (&& (washPower-is 5)
+  ;			(consumption-is 4) ) ))
+
 (defvar false-conjecture
-  (som (&& (washPower-is 5)
-  			(consumption-is 4) ) ))
+  (som (&& (-P- msgToWash 1 GO)
+  			(washPower-is 0) ) ))
 
 ;Zot call
 (eezot:zot 20
