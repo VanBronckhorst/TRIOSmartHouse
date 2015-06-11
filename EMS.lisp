@@ -8,6 +8,8 @@
 (defconstant TRUE 1)
 (defconstant FALSE 0)
 (defconstant MUST 1)
+(defconstant FALSE 0)
+(defconstant TRUE 0)
 (defconstant MAX_FROM_HEM 2)
 
 (defvar pow-domain (loop for i from 0 to 5 collect i))
@@ -17,6 +19,7 @@
 (defvar taskid-domain (loop for i from 0 to 2 collect i))
 (defvar bool '(TRUE FALSE))
 (defvar task-type '(MAY MUST))
+
 
 (define-variable consumption pow-domain)
 (define-variable production pow-domain)
@@ -29,7 +32,6 @@
 (define-variable washControl (taskid-domain task-type pow-domain time-domain slot-domain time-domain bool bool))
 
 (define-variable windmillPower dev-domain)
-(define-variable washControl (dev-domain dev-domain))
 
 ;axioms  
 (defvar consumption-Def
@@ -121,7 +123,6 @@
 	)
 	)
 
-<<<<<<< HEAD
 (defvar wash-start-msg-conds-1
 	( -E- i taskid-domain(-> (-P- msgToWash i GO)
 	  					   (-E- p pow-domain(&& (-P- washPower p) (> p 0)))
@@ -136,7 +137,10 @@
 
 
 (defvar powerIfRequested 
-	(&&
+	(   -E- i dev-domain(-E- i2 '(0 1)(-E- i3 '(0 1)(-E- i4 '(0 1)(-E- i5 '(0 1)(-E- i6 '(0 1)(
+
+
+		(&&
 
 		(-A- x dev-domain (-> 
 								(&& (-P- ovenPower x) (> x 0))
@@ -147,10 +151,10 @@
 		(-A- x dev-domain(-> 
 							(&& (-P- washPower x) (> x 0))
 			 
-			 				(somp_e (-P- washControl 1 1))
+			 				(somp_e (-P- washControl 1 1 i i2 i3 i4 i5 i6))
 		))
 
-	)
+	))))))))
 )
 
 
