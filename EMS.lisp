@@ -17,15 +17,18 @@
 (defvar resp-domain '(0 1))
 (defvar bool '(0 1))
 (defvar task-type '(0 1))
+(defvar time-to-live (loop for i from 0 to 4 collect i))
 
 
 (define-variable consumption pow-domain)
 (define-variable production pow-domain)
+(define-variable max pow-domain)
 (define-variable washPower dev-domain)
 (define-variable ovenPower dev-domain)
 (define-variable legPower dev-domain)
 (define-variable solarPower dev-domain)
-(define-variable windmillPower 'dev-domain)
+(define-variable windmillPower dev-domain)
+(define-variable hemPower dev-domain)
 (define-variable msgToWash (taskid-domain resp-domain))
 (define-variable msgToOven (taskid-domain resp-domain))
 (define-variable windmillPower dev-domain)
@@ -33,6 +36,7 @@
 (define-variable washControl (taskid-domain task-type bool ))
 (define-variable washState (taskid-domain time-to-live))
 (define-variable ovenState (taskid-domain time-to-live))
+
 
 
 (define-variable windmillPower dev-domain)
@@ -58,15 +62,31 @@
       	  (-P- windmillPower a2)
       	  (= x (+ a1 a2) )))))))
 
+(defvar max-def
+(-A- x pow-domain (
+					-E- x2 pow-domain(
+										<-> (-P- max x)
+											(&& (-P- production x2)
+												(= x (+ x2 MAX_FROM_HEM))
+											)
+									 )
+				  )
+)
+)
+
+
+
 (defvar existance
 	(&&
 		(-E- x pow-domain(-P- consumption x))
 		(-E- x pow-domain(-P- production x))
+		(-E- x pow-domain(-P- max x))
 		(-E- x dev-domain(-P- washPower x))
 		(-E- x dev-domain(-P- ovenPower x))
 		(-E- x dev-domain(-P- legPower x))
 		(-E- x dev-domain(-P- solarPower x))
 		(-E- x dev-domain(-P- windmillPower x))
+		(-E- x pow-domain(-P- hemPower x))
 
 	)
 )
@@ -86,6 +106,23 @@
 	  					))
 	)
 	)
+
+(defvar unicity-max-def
+	( -A- x pow-domain(
+	  -A- x2 pow-domain(-> (&& (-P- max x) (-P- max x2))
+	  					   (= x x2)
+	  					))
+	)
+	)
+
+(defvar unicity-hem-def 
+	( -A- x pow-domain(
+	  -A- x2 pow-domain(-> (&& (-P- hemPower x) (-P- hemPower x2))
+	  					   (= x x2)
+	  					))
+	)
+)
+
 
 (defvar unicity-wash-def
 	( -A- x dev-domain(
@@ -153,6 +190,8 @@
 			 	-P- ovenControl i1 i2 i7
 			 ))))
 		)
+
+		
 
 	)
 )
@@ -246,7 +285,11 @@
 (defvar wash-state-definition
 	(-A- i taskid-domain( 
 		-A- time time-to-live(
-			-> (&& (&& (-P- washState i time) (> time 0) ) (!! (somp_e(-P- washControl i TASKTIME 1)))) (somf_e(-P- washState i 0)))
+			-> (&& 
+					(&& (-P- washState i time) (> time 0) ) 
+					(!! (somp_e(-P- washControl i TASKTIME 1)))
+				) 
+			   (somf_e(-P- washState i 0)))
 		)
 	))
 
@@ -312,13 +355,86 @@
 	 )))))
 
 
+(defvar powerBalance-a
+	( -A- cons pow-domain( -A- prod pow-domain(-A- bought pow-domain(
+		-> (&&  (-P- consumption cons)
+				(-P- production prod)
+				(-P- hemPower bought)
+		   )
+			(
+				<= cons (+ prod bought)
+			)
+
+	))))
+)
+
+(defvar overflow-def
+(-A- x pow-domain(	
+
+	<-> (-P- overflow)
+		 (&&
+		 	(-P- hemPower x)
+		 	(> x MAX_FROM_HEM)
+		 )
+	)
+))
+
+(defvar useHemOnlyifNeeded
+	( -A- cons pow-domain( -A- prod pow-domain(
+		-> (&&
+				(-P- consumption cons)
+				(-P- production prod)
+				(<= cons prod)
+			)
+			(
+				-P- hemPower 0
+			)
+
+		)
+	))
+)
+
+(defvar useHemOnlyifNeeded-b
+	( -A- cons pow-domain( -A- prod pow-domain(
+		-> (&&
+				(-P- consumption cons)
+				(-P- production prod)
+				(> cons prod)
+			)
+			(
+				-P- hemPower (- cons prod)
+			)
+
+		)
+	))
+)
+
+(defvar overflow-shed
+	( -A- i taskid-domain( -A- t time-domain
+		(->  (&& (-P- overflow)
+			 	 (somp (-P- washControl i 0 1) )
+			 	 (-P- washState i t)
+			 )
+			 ( &&  (-P- msgToWash i WARN)
+			 	    (next(-P- washPower 0)))
+		)
+	)
+
+)
+
+
+
+
 
 ;the system
 (defvar the-system  
   (alw (&& 
           consumption-Def
           production-Def
+          max-def
           existance
+          unicity-hem-def
+          unicity-max-def
           unicity-prod-def
           unicity-oven-def
           unicity-wash-def
@@ -338,13 +454,17 @@
           oven-state-evolution
           oven-state-unicity
 
-          wash-state-unicity
+          powerBalance-a
           wash-state-definition
+          wash-state-unicity
           wash-state-evolution
           wash-state-motonicity
 
           wash-msg-unicity
           oven-msg-unicity
+          overflow-def
+          useHemOnlyifNeeded
+          useHemOnlyifNeeded-b
 )))      
 
 ;;
@@ -385,13 +505,9 @@
  ; (alw (-> (-P- msgToOven 1 GO )
   ;			(-P- ovenPower 1) ) ))
 
-;(defvar true-conjecture
- ; (alw (-> (-P- msgToOven 1 GO )
-  ;			(-P- ovenPower POWER) ) ))
-
-(defvar true-conjecture(
-	alw (->	(&& (-P- washState 1 3) (!! (somp_e( || (-P- washControl 1 1 1) (-P- washControl 1 1 0 ) )))) (somf_e(-P- washState 1 0)))
-		))
+(defvar true-conjecture
+  (alw (-> (-P- msgToOven 1 GO )
+  			(-P- ovenPower POWER) ) ))
 
 ;Zot call
 (eezot:zot 20
@@ -400,6 +516,6 @@
     (yesterday init)
     ;(!! powerneedscontr)
     ;(!! utility) ;returns UNSAT, since it cannot find counterexamples
-   (!! true-conjecture) ;returns SAT, since it  finds a counterexample
+    ;(!! true-conjecture) ;returns SAT, since it  finds a counterexample
   ) 
 )
