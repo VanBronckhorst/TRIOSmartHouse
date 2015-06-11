@@ -17,6 +17,7 @@
 (defvar taskid-domain (loop for i from 0 to 2 collect i))
 (defvar bool '(TRUE FALSE))
 (defvar task-type '(MAY MUST))
+(defvar resp-domain '(GO WARN))
 
 (define-variable consumption pow-domain)
 (define-variable production pow-domain)
@@ -27,6 +28,8 @@
 (define-variable windmillPower 'dev-domain)
 (define-variable ovenControl (taskid-domain task-type pow-domain time-domain slot-domain time-domain bool bool))
 (define-variable washControl (taskid-domain task-type pow-domain time-domain slot-domain time-domain bool bool))
+(define-variable msgToWash (taskid-domain resp-domain))
+(define-variable msgToOven (taskid-domain resp-domain))
 
 (define-variable windmillPower dev-domain)
 (define-variable washControl (dev-domain dev-domain))
@@ -121,7 +124,7 @@
 	)
 	)
 
-<<<<<<< HEAD
+
 (defvar wash-start-msg-conds-1
 	( -E- i taskid-domain(-> (-P- msgToWash i GO)
 	  					   (-E- p pow-domain(&& (-P- washPower p) (> p 0)))
@@ -129,10 +132,18 @@
 	)
 
 (defvar wash-start-msg-conds-2
-	( -E- i taskid-domain(-> (&& (-P- msgToWash i GO) (|| () () ))
-	  					   (-E- p pow-domain(&& (-P- washPower p) (> p 0)))
-	  					))
-	)
+	( -E- i taskid-domain(
+	  -E- p pow-domain(
+	  -E- p1 pow-domain(-> (&& (-P- msgToWash i GO) (|| (-P- washControl i MUST p) (somp_e (-P- washControl i MUST p)) ))
+	  					   (&& (-P- washPower p1) (= p1 p))  )
+	  ))))
+
+(defvar oven-start-msg-conds-2
+	( -E- i taskid-domain(
+	  -E- p pow-domain(
+	  -E- p1 pow-domain(-> (&& (-P- msgToOven i GO) (|| (-P- ovenControl i MUST p) (somp_e (-P- ovenControl i MUST p)) ))
+	  					   (&& (-P- ovenPower p1) (= p1 p))  )
+	  ))))
 
 
 (defvar powerIfRequested 
@@ -154,6 +165,15 @@
 )
 
 
+(defvar wash-response-ensurance
+	(-E- i taskid-domain( -> (-P- washControl i) (-P- msgToWash i)))
+)
+
+(defvar oven-response-ensurance
+	(-E- i taskid-domain( -> (-P- ovenControl i) (-P- msgToOven i)))
+)
+
+
 ;the system
 (defvar the-system  
   (alw (&& 
@@ -168,6 +188,11 @@
           unicity-sol-def
           unicity-wind-def
           powerIfRequested
+          oven-start-msg-conds-2
+          wash-start-msg-conds-2
+          wash-start-msg-conds-1
+          wash-response-ensurance
+          oven-response-ensurance
 )))      
 
 ;;
@@ -190,9 +215,10 @@
  ; (som (&& (washPower-is 5)
   ;			(consumption-is 4) ) ))
 
-(defvar false-conjecture
-  (som (&& (-P- msgToWash 1 GO)
-  			(washPower-is 0) ) ))
+;(defvar false-conjecture
+ ; (som (&& (-P- msgToWash 1 GO)
+  ;			(washPower-is 0) ) ))
+
 
 ;Zot call
 (eezot:zot 20
@@ -201,6 +227,6 @@
     (yesterday init)
     ;(!! powerneedscontr)
     ;(!! utility) ;returns UNSAT, since it cannot find counterexamples
-    ;(!! false-conjecture) ;returns SAT, since it  finds a counterexample
+    (!! conjecture) ;returns SAT, since it  finds a counterexample
   ) 
 )
