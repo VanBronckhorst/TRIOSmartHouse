@@ -282,7 +282,7 @@
 
 (defvar true-conjecture
   (alw (-> (-P- msgToOven 1 GO )
-  			(-P- ovenPower-is POWER) ) ))
+  			(-P- ovenPower POWER) ) ))
 
 ;Zot call
 (eezot:zot 20
