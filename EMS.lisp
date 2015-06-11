@@ -10,6 +10,8 @@
 
 (defvar pow-domain (loop for i from 0 to 5 collect i))
 (defvar dev-domain (loop for i from 0 to 2 collect i))
+(defvar ovenControl)
+()
 (define-variable consumption pow-domain)
 (define-variable production pow-domain)
 (define-variable washPower dev-domain)
@@ -17,7 +19,7 @@
 (define-variable legPower dev-domain)
 (define-variable solarPower dev-domain)
 (define-variable windmillPower dev-domain)
-
+(define-variable washControl (dev-domain dev-domain))
 
 ;axioms  
 (defvar consumption-Def
@@ -109,6 +111,24 @@
 	)
 	)
 
+(defvar powerIfRequested 
+	(&&
+
+		(-A- x dev-domain (-> 
+								(&& (-P- ovenPower x) (> x 0))
+			 
+			 					(somp_e (-P- ovenControl))
+		))
+
+		(-A- x dev-domain(-> 
+							(&& (-P- washPower x) (> x 0))
+			 
+			 				(somp_e (-P- washControl 1 1))
+		))
+
+	)
+)
+
 
 ;the system
 (defvar the-system  
@@ -123,7 +143,23 @@
           unicity-leg-def
           unicity-sol-def
           unicity-wind-def
+          powerIfRequested
 )))      
+
+;;
+(defvar powerneedscontr
+	(->
+		(-A- x dev-domain(&& (-P- ovenPower x) (> x 0)))
+		(somp_e (-P- ovenControl))
+
+	)
+)
+	
+(defvar init
+  (&&
+  		(alwp_i (!! (-P- ovenControl)))
+  		(-A- x dev-domain(-A- x2 dev-domain(!! (-P- washControl x x2))))
+  ))	
 
 ;;false assertion
 (defvar false-conjecture
@@ -134,7 +170,9 @@
 (eezot:zot 20
   (&& 
     the-system
+    (yesterday init)
+    ;(!! powerneedscontr)
     ;(!! utility) ;returns UNSAT, since it cannot find counterexamples
-    (!! false-conjecture) ;returns SAT, since it  finds a counterexample
+    ;(!! false-conjecture) ;returns SAT, since it  finds a counterexample
   ) 
 )
