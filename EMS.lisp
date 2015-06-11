@@ -28,6 +28,8 @@
 (define-variable ovenControl (taskid-domain task-type pow-domain time-domain slot-domain time-domain bool bool))
 (define-variable washControl (taskid-domain task-type pow-domain time-domain slot-domain time-domain bool bool))
 
+(define-variable windmillPower dev-domain)
+(define-variable washControl (dev-domain dev-domain))
 
 ;axioms  
 (defvar consumption-Def
@@ -119,6 +121,7 @@
 	)
 	)
 
+<<<<<<< HEAD
 (defvar wash-start-msg-conds-1
 	( -E- i taskid-domain(-> (-P- msgToWash i GO)
 	  					   (-E- p pow-domain(&& (-P- washPower p) (> p 0)))
@@ -131,6 +134,24 @@
 	  					))
 	)
 
+
+(defvar powerIfRequested 
+	(&&
+
+		(-A- x dev-domain (-> 
+								(&& (-P- ovenPower x) (> x 0))
+			 
+			 					(somp_e (-P- ovenControl))
+		))
+
+		(-A- x dev-domain(-> 
+							(&& (-P- washPower x) (> x 0))
+			 
+			 				(somp_e (-P- washControl 1 1))
+		))
+
+	)
+)
 
 
 ;the system
@@ -146,7 +167,23 @@
           unicity-leg-def
           unicity-sol-def
           unicity-wind-def
+          powerIfRequested
 )))      
+
+;;
+(defvar powerneedscontr
+	(->
+		(-A- x dev-domain(&& (-P- ovenPower x) (> x 0)))
+		(somp_e (-P- ovenControl))
+
+	)
+)
+	
+(defvar init
+  (&&
+  		(alwp_i (!! (-P- ovenControl)))
+  		(-A- x dev-domain(-A- x2 dev-domain(!! (-P- washControl x x2))))
+  ))	
 
 ;;false assertion
 ;(defvar false-conjecture
@@ -161,7 +198,9 @@
 (eezot:zot 20
   (&& 
     the-system
+    (yesterday init)
+    ;(!! powerneedscontr)
     ;(!! utility) ;returns UNSAT, since it cannot find counterexamples
-    (!! false-conjecture) ;returns SAT, since it  finds a counterexample
+    ;(!! false-conjecture) ;returns SAT, since it  finds a counterexample
   ) 
 )
