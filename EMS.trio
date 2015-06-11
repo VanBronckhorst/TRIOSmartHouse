@@ -248,7 +248,7 @@ signature:
 			If the request is to execute a must task, or in the past there was a request to execute that must task, but was interrupted for a blackout, 
 			than the power provided to the device is exactly the required one. 
 		*/		
-		WashStartMsgConditions:
+		WashStartMsgConditions: //done
 		msgToWash(i,Start) -> washPower(p) & p>0
         msgToWash(i,Start) & (washControl(i,Must,p,t,s,d,sh,b) | SomP(washControl(i,Must,p,t,s,d,sh,b))) -> washPower(p)
 
@@ -256,14 +256,14 @@ signature:
 			Defines that if a starting message was sent to the oven than there is a request to execute that task or there was a request to execute 
 			that task, but was interrupted because of a blackout, than the power provided to the device is exactly the required one.
 		*/
-		OvenStartMsgConditions:
+		OvenStartMsgConditions://done
 		msgToOven(i,Start) & (ovenControl(i,Must,p,t,s,d,sh,b) | SomP(ovenControl(i,Must,p,t,s,d,sh,b))) -> ovenPower(p)
 
 
 		/* 
 			Defines that power is provided to a device only it has previously sent a request 
 		*/
-		PowerIfRequested:
+		PowerIfRequested://done
 		ovenPower(p) & p>0 -> SomP(ovenControl(i,Must,p,t,s,d,sh,b)) &
 		washPower(p1) & p1>0 -> SomP(washControl(i,May,p,t,s,d,sh,b) & (p<>p1 -> b=1)
 
@@ -271,7 +271,7 @@ signature:
 		/*
 			Ensures that for every request a message is sent back
 		*/
-		ResponseEnsurance:
+		ResponseEnsurance://done
 		washControl(i,m,p,t,s,d,sh,b)->msgToWash(resp)
 		ovenControl(i,m,p,t,s,d,sh,b)->msgToOven(resp)
 
@@ -323,7 +323,7 @@ signature:
 			the counter should be incremented by one unit. Lastly it defines that if the counter is true for a certain task and for a certain number of stops
 			greater than zero, than the task must be a “May” task.
 		*/
-		WashStopCounterDefinition:
+		WashStopCounterDefinition: //not necessary
 		washStopCounter(i,nstop) -> washState(i,t,e) & t>0 & e>0
 		washStopCounter(i,nstop) -> SomP(washStopCounter(i,0))
 		washState(i,t,e) & e>0 & t>0 & washPower(0) & not(blackoutReceive) & UpToNow(washPower(p) & p!=0) & UpToNow(stopCounter(i,nstop)) -> NowOn(stopCounter(i,nstop+1))
@@ -335,7 +335,7 @@ signature:
 			energy and time will become 0 in the future except when the task allows load shedding. It then defines the monotonicity of the energy. 
 			Lastly it defines how the energy value and the time parameter change and how the energy and time parameters are correlated.
 		*/
-		WashStateDefinition:
+		WashStateDefinition: 
 		washState(i,t,e) & e>0 & t>0 & not(SomP(washControl(i,m,p,t,s,d,sh,1))) -> SomF(washState(i,0,0)) 
 		UpToNow(washState(i,t,e)) -> Until(washState(i,t1,e1) & e1<=e,(msgToWash(i2,Start) & i2<>i)) &
 		Past(washState(i,t,e),t1) & Lasted(washPower(p),t1) -> washState(i,t2,e1) & e1=e-p*t1 & t2=e1/p;

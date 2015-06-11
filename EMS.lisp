@@ -14,7 +14,7 @@
 (defvar dev-domain (loop for i from 0 to 2 collect i))
 (defvar taskid-domain (loop for i from 0 to 2 collect i))
 (defvar time-to-live (loop for i from 0 to TASKTIME collect i))
-(defvar resp-domain '(GO WARN))
+(defvar resp-domain '(0 1))
 (defvar bool '(0 1))
 (defvar task-type '(0 1))
 
@@ -32,6 +32,8 @@
 (define-variable ovenControl (taskid-domain task-type bool ))
 (define-variable washControl (taskid-domain task-type bool ))
 (define-variable washState (taskid-domain time-to-live))
+(define-variable ovenState (taskid-domain time-to-live))
+
 
 (define-variable windmillPower dev-domain)
 
@@ -215,13 +217,32 @@
 
 
 (defvar wash-response-ensurance
-	(-A- i taskid-domain( -> (-P- washControl i) (-P- msgToWash i))
+	(-A- i taskid-domain( -> (-P- washControl i) ( || (-P- msgToWash i GO) (-P- msgToWash i WARN))
+		)
 		))
 
+(defvar wash-msg-unicity
+	(-A- i taskid-domain(
+		-A- r2 resp-domain(
+
+		-A- r resp-domain( -> (&& (-P- msgToWash i r) (-P- msgToWash i r2)) (= r r2)
+			))
+	)))
+
+(defvar oven-msg-unicity
+	(-A- i taskid-domain(
+	 -A- r2 resp-domain(
+	 -A- r resp-domain( -> (&& (-P- msgToOven i r) (-P- msgToOven i r2)) (= r r2)
+			))
+	)))
+
 (defvar oven-response-ensurance
-	(-A- i taskid-domain( -> (-P- ovenControl i) (-P- msgToOven i)))
+	(-A- i taskid-domain( -> (-P- ovenControl i) (|| (-P- msgToOven i GO) (-P- msgToOven i WARN))))
 )
 
+
+; Wash state and oven state
+;
 (defvar wash-state-definition
 	(-A- i taskid-domain( 
 		-A- time time-to-live(
@@ -231,26 +252,66 @@
 
 ( defvar wash-state-unicity
 	( -A- i taskid-domain(
+	  -A- i2 taskid-domain(
 	  -A- time time-to-live(
-	  	-A- time2 time-to-live (-> (&& (-P- washState i time) (-P- washState i time2))
-	  					   (= time time2)
+	  -A- time2 time-to-live (-> (&& (-P- washState i time) (-P- washState i2 time2))
+	  					   ( && ( = i i2) (= time time2))
 	  					)))
 	)
-	)
+	))
+
 
 ( defvar wash-state-evolution
 	(-A- i taskid-domain(
-	 -E- time time-to-live(
-	 -E- time2 time-to-live( ->  ( && (yesterday(-P- washState i time)) (!! (yesterday(-P- msgToWash i WARN)))) 
-	 	(&& (-P- washState i time2) (= time2 (- 1 time)))
+	 -A- time time-to-live(
+	 -A- time2 time-to-live( ->  ( && (next(-P- washState i time)) (!! (-P- msgToWash i WARN))) 
+	 	(&& (-P- washState i time2) (= time (- 1 time2)))
 	 )))))
 
 ( defvar wash-state-motonicity
 	(-A- i taskid-domain(
-	 -E- time time-to-live(
-	 -E- time2 time-to-live( ->  (yesterday(-P- washState i time)) 
-	 	(&& (-P- washState i time2) (<= time2 time))
+	 -A- time time-to-live(
+	 -A- time2 time-to-live( ->  (next(-P- washState i time)) 
+	 	(&& (-P- washState i time2) (<= time time2))
 	 )))))
+
+
+;;;;;;;;;;;;
+
+(defvar oven-state-definition
+	(-A- i taskid-domain( 
+		-A- time time-to-live(
+			-> (&& (&& (-P- ovenState i time) (> time 0) ) (!! (somp_e(-P- ovenControl i TASKTIME 1)))) (somf_e(-P- ovenState i 0)))
+		)
+	))
+
+( defvar oven-state-unicity
+	( -A- i taskid-domain(
+	  -A- i2 taskid-domain(
+	  -A- time time-to-live(
+	  -A- time2 time-to-live (-> (&& (-P- ovenState i time) (-P- ovenState i2 time2))
+	  					   ( && ( = i i2) (= time time2))
+	  					)))
+	)
+	))
+
+
+( defvar oven-state-evolution
+	(-A- i taskid-domain(
+	 -A- time time-to-live(
+	 -A- time2 time-to-live( ->  ( && (next(-P- ovenState i time)) (!! (-P- msgToOven i WARN))) 
+	 	(&& (-P- ovenState i time2) (= time (- 1 time2)))
+	 )))))
+
+
+( defvar oven-state-motonicity
+	(-A- i taskid-domain(
+	 -A- time time-to-live(
+	 -A- time2 time-to-live( ->  (next(-P- ovenState i time)) 
+	 	(&& (-P- ovenState i time2) (<= time time2))
+	 )))))
+
+
 
 ;the system
 (defvar the-system  
@@ -272,10 +333,18 @@
           oven-response-ensurance
           noParamControlDef
           messageUnicity
-          wash-state-definition
+          oven-state-motonicity
+          oven-state-definition
+          oven-state-evolution
+          oven-state-unicity
+
           wash-state-unicity
+          wash-state-definition
           wash-state-evolution
           wash-state-motonicity
+
+          wash-msg-unicity
+          oven-msg-unicity
 )))      
 
 ;;
