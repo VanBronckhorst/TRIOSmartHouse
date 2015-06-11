@@ -8,8 +8,6 @@
 (defconstant TRUE 1)
 (defconstant FALSE 0)
 (defconstant MUST 1)
-(defconstant FALSE 0)
-(defconstant TRUE 0)
 (defconstant MAX_FROM_HEM 2)
 
 (defvar pow-domain (loop for i from 0 to 5 collect i))
@@ -17,8 +15,8 @@
 (defvar slot-domain (loop for i from 0 to 3 collect i))
 (defvar dev-domain (loop for i from 0 to 2 collect i))
 (defvar taskid-domain (loop for i from 0 to 2 collect i))
-(defvar bool '(TRUE FALSE))
-(defvar task-type '(MAY MUST))
+(defvar bool '(0 1))
+(defvar task-type '(0 1))
 
 
 (define-variable consumption pow-domain)
@@ -27,9 +25,9 @@
 (define-variable ovenPower dev-domain)
 (define-variable legPower dev-domain)
 (define-variable solarPower dev-domain)
-(define-variable windmillPower 'dev-domain)
-(define-variable ovenControl (taskid-domain task-type pow-domain time-domain slot-domain time-domain bool bool))
-(define-variable washControl (taskid-domain task-type pow-domain time-domain slot-domain time-domain bool bool))
+(define-variable windmillPower dev-domain)
+(define-variable ovenControl (taskid-domain task-type bool ))
+(define-variable washControl (taskid-domain task-type bool ))
 
 (define-variable windmillPower dev-domain)
 
@@ -136,11 +134,66 @@
 	)
 
 
+;Define the Control messages without parameters used to speedup the solution
+(defvar noParamControlDef
+	(&&
+		(<-> (-P- washControl)
+			 ( -E- i1 taskid-domain(-E- i2 task-type(-E- i7 bool(
+			 	-P- washControl i1 i2 i7
+			 ))))
+		)
+
+		(<-> (-P- ovenControl)
+			 ( -E- i1 taskid-domain(-E- i2 task-type(-E- i7 bool(
+			 	-P- ovenControl i1 i2 i7
+			 ))))
+		)
+
+	)
+)
+
+(defvar messageUnicity
+	(&&
+		( -A- i1 taskid-domain(-A- i2 task-type(-A- i7 bool(
+		 -A- j1 taskid-domain(-A- j2 task-type(-A- j7 bool(
+		-> (&&
+			(-P- washControl i1 i2 i7)
+			(-P- washControl j1 j2 j7)
+		   )
+
+			(&&
+				(= i1 j1)
+				(= i2 j2)
+				
+				(= i7 j7)
+
+			)
+
+		)))))))
+
+		( -A- i1 taskid-domain(-A- i2 task-type(-A- i7 bool(
+		 -A- j1 taskid-domain(-A- j2 task-type(-A- j7 bool(
+		-> (&&
+			(-P- ovenControl i1 i2 i7 )
+			(-P- ovenControl j1 j2 j7 )
+		   )
+
+			(&&
+				(= i1 j1)
+				(= i2 j2)
+
+				(= i7 j7)
+
+			)
+
+		)))))))
+
+
+	)
+)
+
 (defvar powerIfRequested 
-	(   -E- i dev-domain(-E- i2 '(0 1)(-E- i3 '(0 1)(-E- i4 '(0 1)(-E- i5 '(0 1)(-E- i6 '(0 1)(
-
-
-		(&&
+	(&&   
 
 		(-A- x dev-domain (-> 
 								(&& (-P- ovenPower x) (> x 0))
@@ -151,10 +204,10 @@
 		(-A- x dev-domain(-> 
 							(&& (-P- washPower x) (> x 0))
 			 
-			 				(somp_e (-P- washControl 1 1 i i2 i3 i4 i5 i6))
+			 				(somp_e (-P- washControl))
 		))
 
-	))))))))
+	)
 )
 
 
@@ -172,6 +225,8 @@
           unicity-sol-def
           unicity-wind-def
           powerIfRequested
+          noParamControlDef
+          messageUnicity
 )))      
 
 ;;
@@ -186,7 +241,7 @@
 (defvar init
   (&&
   		(alwp_i (!! (-P- ovenControl)))
-  		(-A- x dev-domain(-A- x2 dev-domain(!! (-P- washControl x x2))))
+  		(-A- x taskid-domain(-A- x2 task-type(-A- x3 bool(!! (-P- washControl x x2 x3)))))
   ))	
 
 ;;false assertion
@@ -195,8 +250,7 @@
   ;			(consumption-is 4) ) ))
 
 (defvar false-conjecture
-  (som (&& (-P- msgToWash 1 GO)
-  			(washPower-is 0) ) ))
+  (alw(!! (-P- ovenPower 2))))
 
 ;Zot call
 (eezot:zot 20
@@ -205,6 +259,6 @@
     (yesterday init)
     ;(!! powerneedscontr)
     ;(!! utility) ;returns UNSAT, since it cannot find counterexamples
-    ;(!! false-conjecture) ;returns SAT, since it  finds a counterexample
+    (!! false-conjecture) ;returns SAT, since it  finds a counterexample
   ) 
 )

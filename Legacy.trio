@@ -26,11 +26,15 @@ signature:
 
 		formulae:
 		
+<<<<<<< Updated upstream
 		/*
 			Axiom that defines that the amount of power required by a legacy device is always equal to the power supplied, unless the power supplied
 			is equal to 0
 		*/
 		Definition of power consumption:
+=======
+		DefinitionOfPowerConsumption:
+>>>>>>> Stashed changes
 		(powerRequired(p)&powerSupplied(p1)) -> (p=p1)|(p1=0);
 
 end;

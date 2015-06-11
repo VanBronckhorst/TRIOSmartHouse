@@ -1,6 +1,7 @@
 class HAN(const MAX_DELAY):
 signature:
-	visible washIn,washOut,ovenIn,ovenOut,refrigeratorIn,refrigeratorOut;
+	visible washIn,washOut,ovenIn,ovenOut,refrigeratorIn,refrigeratorOut
+			emsToWash,emsToOven,washToEms,ovenToEms;
 
 	domains:
 	Bool:0..1;
