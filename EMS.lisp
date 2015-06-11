@@ -6,12 +6,14 @@
 (defconstant WARN 0)
 (defconstant MAX_FROM_HEM 2)
 (defconstant POWER 1)
+(defconstant TASKTIME 4)
 
 (defvar pow-domain (loop for i from 0 to 5 collect i))
 (defvar time-domain (loop for i from 0 to 5 collect i))
 (defvar slot-domain (loop for i from 0 to 3 collect i))
 (defvar dev-domain (loop for i from 0 to 2 collect i))
 (defvar taskid-domain (loop for i from 0 to 2 collect i))
+(defvar time-to-live (loop for i from 0 to TASKTIME collect i))
 (defvar resp-domain '(GO WARN))
 (defvar bool '(0 1))
 (defvar task-type '(0 1))
@@ -29,6 +31,7 @@
 (define-variable windmillPower dev-domain)
 (define-variable ovenControl (taskid-domain task-type bool ))
 (define-variable washControl (taskid-domain task-type bool ))
+(define-variable washState (taskid-domain time-to-live))
 
 (define-variable windmillPower dev-domain)
 
@@ -219,6 +222,35 @@
 	(-A- i taskid-domain( -> (-P- ovenControl i) (-P- msgToOven i)))
 )
 
+(defvar wash-state-definition
+	(-A- i taskid-domain( 
+		-A- time time-to-live(
+			-> (&& (&& (-P- washState i time) (> time 0) ) (!! (somp_e(-P- washControl i TASKTIME 1)))) (somf_e(-P- washState i 0)))
+		)
+	))
+
+( defvar wash-state-unicity
+	( -A- i taskid-domain(
+	  -A- time time-to-live(
+	  	-A- time2 time-to-live (-> (&& (-P- washState i time) (-P- washState i time2))
+	  					   (= time time2)
+	  					)))
+	)
+	)
+
+( defvar wash-state-evolution
+	(-A- i taskid-domain(
+	 -E- time time-to-live(
+	 -E- time2 time-to-live( ->  ( && (yesterday(-P- washState i time)) (!! (yesterday(-P- msgToWash i WARN)))) 
+	 	(&& (-P- washState i time2) (= time2 (- 1 time)))
+	 )))))
+
+( defvar wash-state-motonicity
+	(-A- i taskid-domain(
+	 -E- time time-to-live(
+	 -E- time2 time-to-live( ->  (yesterday(-P- washState i time)) 
+	 	(&& (-P- washState i time2) (<= time2 time))
+	 )))))
 
 ;the system
 (defvar the-system  
@@ -240,6 +272,10 @@
           oven-response-ensurance
           noParamControlDef
           messageUnicity
+          wash-state-definition
+          wash-state-unicity
+          wash-state-evolution
+          wash-state-motonicity
 )))      
 
 ;;
@@ -280,9 +316,13 @@
  ; (alw (-> (-P- msgToOven 1 GO )
   ;			(-P- ovenPower 1) ) ))
 
-(defvar true-conjecture
-  (alw (-> (-P- msgToOven 1 GO )
-  			(-P- ovenPower POWER) ) ))
+;(defvar true-conjecture
+ ; (alw (-> (-P- msgToOven 1 GO )
+  ;			(-P- ovenPower POWER) ) ))
+
+(defvar true-conjecture(
+	alw (->	(&& (-P- washState 1 3) (!! (somp_e( || (-P- washControl 1 1 1) (-P- washControl 1 1 0 ) )))) (somf_e(-P- washState 1 0)))
+		))
 
 ;Zot call
 (eezot:zot 20
@@ -291,6 +331,6 @@
     (yesterday init)
     ;(!! powerneedscontr)
     ;(!! utility) ;returns UNSAT, since it cannot find counterexamples
-    (!! true-conjecture) ;returns SAT, since it  finds a counterexample
+   (!! true-conjecture) ;returns SAT, since it  finds a counterexample
   ) 
 )
