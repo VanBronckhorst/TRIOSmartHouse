@@ -33,7 +33,7 @@ signature:
 			@param Resp: Start if the task can begin the execution, warn if it can't start the execution or if there is a blackout
 		*/
 		event msgToWash(integer,Resp);
-		
+
 		/*
 			This event is triggered when a request to execute a task scheduled by the oven is received through the HAN
 			@param integer: id of the task
@@ -217,6 +217,7 @@ signature:
 		legacyPower1(cons) & legacyPower1(cons2)-> cons=cons2 &
 		hemPower(cons) & hemPower(cons2)-> cons=cons2 &
 		legacyReq1(cons) & legacyReq1(cons2)-> cons=cons2 &
+
 		washState(i,t,e) & washState(i,t1,e1) -> t=t1 & e=e1 &
 		ovenState(i,t,e) & ovenState(i,t1,e1) -> t=t1 & e=e1 &
 		washStopCounter(i,nstop) & washStopCounter(i,nstop2) -> nstop2=nstop 
@@ -293,7 +294,9 @@ signature:
 			to the device
 		*/
 		OverflowMeasuresShed:
+
 		overflow & washState(i,t,e) & SomP(washControl(i,May,p,t,s,d,1,b)) ->  msgToWash(i,Warn) & NowOn(washPower(0));
+
 
 		/*
 			Defines that if there is an overflow, and a task that can be shifted is in execution and it wasn’t stop more than the number of allowed stop,
