@@ -307,11 +307,14 @@
 (defvar wash-state-definition
 	(-A- i taskid-domain( 
 		-A- time time-to-live(
-			-> (&& 
-					(&& (-P- washState i time) (> time 0) ) 
-					(!! (somp_e(-P- washControl i MAY 1)))
+			-> (&&
+					(&& 
+						(-P- washState i time) 
+						(> time 0) 
+					) 
+					
 				) 
-			   (somf_e(-P- washState i 0)))
+				(somf_e(-P- washState i 0)))
 		)
 	))
 
@@ -329,17 +332,38 @@
 ( defvar wash-state-evolution
 	(-A- i taskid-domain(
 	 -A- time time-to-live(
-	 -A- time2 time-to-live( ->  ( && (next(-P- washState i time)) (!! (-P- msgToWash i WARN))) 
-	 	(&& (-P- washState i time2) (= time (- time2 1)))
-	 )))))
+	 -A- time2 time-to-live( ->  (&& (-P- washState i time)
+	 								 (futr (-P- washState i time2) 1 )
+	 								 (-P- washPower POWER)
+	 							 )    
+	 							 (
+	 							 	= time2 (- time 1)
+	 							 )
+					    	)    
+    ))))
+
 
 ( defvar wash-state-motonicity
 	(-A- i taskid-domain(
+	 -A- i2 taskid-domain(
 	 -A- time time-to-live(
-	 -A- time2 time-to-live( ->  (next(-P- washState i time)) 
-	 	(&& (-P- washState i time2) (<= time time2))
-	 )))))
+	 -A- time2 time-to-live( ->  (&& (-P- washState i time)
+	 								 (futr (-P- washState i time2) 1 )
+	 							 )
+	 							 (<= time2 time)
+	 ))))))
 
+(defvar wash-state-continuity
+	(-A- i taskid-domain(
+	 -A- time time-to-live(
+	 -E- time2 time-to-live( ->  (&& (-P- washState i time)
+	 							 	 (!!(-P- msgToWash i WARN))
+	 							 )
+	 							 
+	 							 	
+	 							 (futr (-P- washState i time2) 1 )
+	 							 	
+	 )))))
 
 
 
@@ -494,7 +518,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;:
 
 (defvar wash-start-msg-conds-1
-	( -A- i taskid-domain(-> (-P- msgToWash i GO) (next(-P- washPower POWER)))
+	( -A- i taskid-domain(-> (-P- msgToWash i GO) (futr(-P- washPower POWER) 1))
 	)
 	)
 
@@ -504,12 +528,6 @@
 	)
 
 
-(defvar wash-response-ensurance
-	(-A- i taskid-domain(
-	 -A- m task-type(
-	 -A- b bool( -> (-P- washControl i m b) ( || (-P- msgToWash i GO) (-P- msgToWash i WARN))
-		)
-		))))
 
 (defvar wash-msg-unicity
 	(-A- i taskid-domain(
@@ -532,33 +550,61 @@
 	(-A- i taskid-domain( -> (-P- ovenControl i MUST 0) (-P- msgToOven i GO)))
 )
 
+(defvar wash-response-ensurance-1
+	(-A- i taskid-domain( -> (-P- washControl i MUST 0) (-P- msgToWash i GO)))
+)
 
-(defvar may-wash-response-definition-ok(
-	-A- i taskid-domain(
-	-A- b bool(
-	-A- p pow-domain(
-	-A- p2 pow-domain
-	( <-> ( && (-P- washControl i MAY b) (&& (-P- consumption p) (&& (-P- max p2) (> p2 (+ p POWER)))) ) 
-		( && (-P- msgToWash i GO) ( next( && (-P- washPower POWER) (-P- washState i TASKTIME)))
-		)
-	)))
-)))
+(defvar wash-response-ensurance-2
+	(-A- i taskid-domain( -> (-P- washControl i MAY 0) (-P- msgToWash i GO)))
+)
 
-(defvar may-wash-response-definition-ko(
-	-A- i taskid-domain(
-	-A- b bool(
-	-A- p pow-domain(
-	-A- p2 pow-domain
-	( <-> ( && (-P- washControl i MAY b) (&& (-P- consumption p) (&& (-P- max p2) (< p2 (+ p POWER)))) ) 
-		( && (-P- msgToWash i WARN) 
-			(somf_e(&& (-P- msgToWash i GO) ( && (-P- washPower POWER) (-P- washState i TASKTIME))))
-	))
-)))))
+(defvar wash-response-ensurance-3
+	(-A- i taskid-domain( -> (-P- washControl i MAY 1) (-P- msgToWash i GO)))
+)
 
-( defvar must-wash-response-definition(
-	-A- i taskid-domain(
-	-A- b bool( <-> (-P- washControl i MUST b) 
-		( && (-P- msgToWash i GO) ( next( && (-P- washPower POWER) (-P- washState i TASKTIME))))))))
+
+
+
+(defvar must-wash-response-definition
+	(-A- i taskid-domain(
+			-A- b bool(
+						->
+						(-P- washControl i MUST b) 
+						(-P- msgToWash i GO)
+			)
+	))	
+)
+
+(defvar may-wash-response-definition
+	(-A- i taskid-domain(
+			-A- b bool(
+						->
+						(-P- washControl i MAY b) 
+						(-P- msgToWash i GO)
+			)
+	))	
+)
+
+(defvar goReactionWash
+	(-A- i taskid-domain(->
+							(&& (-P- msgToWash i GO)
+								(!!(-E- tt time-to-live(-P- washState i tt )))
+							)
+							(&&
+								(futr (-P- washState i TASKTIME) 1)
+								(futr (-P- washPower POWER) 1)
+							)
+		) 
+)
+	)
+
+
+
+
+
+
+
+
 
 
 
@@ -783,15 +829,26 @@
 
 	))
 
-(defvar performing-only-with-request-wash(
+(defvar performing-only-with-request-wash-1(
 	-A- i taskid-domain(
 	-A- time time-to-live(
-	-A- m task-type(
-	-A- b bool( <-> (-P- washState i time) ( && (somp_e(-P- washControl i m b)) (somp_e(-P- msgToWash i GO)))
+		-> (-P- washState i time) (&& (somp_e(-P- washControl i MAY 1)) (somp_e(-P- msgToWash i GO)))
 		)
-	))
-	)
-	))
+	)))
+
+(defvar performing-only-with-request-wash-2(
+	-A- i taskid-domain(
+	-A- time time-to-live(
+		-> (-P- washState i time) (&& (somp_e(-P- washControl i MAY 0)) (somp_e(-P- msgToWash i GO)))
+		)
+	)))
+
+(defvar performing-only-with-request-wash-3(
+	-A- i taskid-domain(
+	-A- time time-to-live(
+		-> (-P- washState i time) (&& (somp_e(-P- washControl i MUST 0)) (somp_e(-P- msgToWash i GO)))
+		)
+	)))
 
 
 (defvar performing-only-with-request-oven(
@@ -811,6 +868,11 @@
 	!! (-P- ovenControl i MAY 1)
 	)))
 
+(defvar no-must-shed(
+	-A- i taskid-domain(
+	!! (-P- ovenControl i MUST 1))
+	))
+
 (defvar no-useless-message-oven
 	(-A- i taskid-domain(-A- m '(0 1)
 			(->
@@ -818,6 +880,18 @@
 				(||
 					(-P- blackout)
 					(-P- ovenControl)
+				)
+			)
+	))
+)
+
+(defvar no-useless-message-wash
+	(-A- i taskid-domain(-A- m '(0 1)
+			(->
+				(-P- msgToWash i m)
+				(||
+					(-P- blackout)
+					(-P- washControl)
 				)
 			)
 	))
@@ -850,7 +924,9 @@
           powerIfRequested
           oven-start-msg-conds-1
           wash-start-msg-conds-1
-          wash-response-ensurance
+          wash-response-ensurance-1
+          wash-response-ensurance-2
+          wash-response-ensurance-3
           oven-response-ensurance
           noParamControlDef
           messageUnicity
@@ -873,10 +949,11 @@
           useHemOnlyifNeeded-b
 
 
-		  may-wash-response-definition-ko
-          may-wash-response-definition-ok
           must-wash-response-definition
           must-oven-response-definition
+          may-wash-response-definition
+          may-wash-response-definition
+
 
 
           blackout-def
@@ -890,27 +967,31 @@
           no-request-while-working-oven
           no-request-while-working-wash
 
-        ;  oven-msg-from-to
-         ; wash-msg-from-to
 
           request-unicity-wash
           request-unicity-oven
 
-          ;oven-msg-to-from
-          ;wash-msg-to-from
           oven-msg-from-to-unicity
           wash-msg-from-to-unicity
 
           no-may-oven-1
           no-may-oven-2
+          no-must-shed
 
           performing-only-with-request-oven
-          performing-only-with-request-wash
+          performing-only-with-request-wash-1
+          performing-only-with-request-wash-2
+          performing-only-with-request-wash-3
           goReactionOven
 
           ;da fare per wash
           no-useless-message-oven
+          no-useless-message-wash
           oven-state-continuity
+          wash-state-continuity
+
+          goReactionWash
+          
 
 
 
@@ -973,13 +1054,15 @@
 
 
 ;Zot call
-(eezot:zot 10
+(eezot:zot 20
   (&& 
     the-system
     (yesterday init)
     ;(!! powerneedscontr)
     ;(!! utility) ;returns UNSAT, since it cannot find counterexamples
-    (som(-E- i taskid-domain(-E- tt time-to-live(-P- ovenControl i MUST 0))))
+    ;(som(-E- i taskid-domain(-E- tt time-to-live(-P- ovenControl i MUST 0))))
+    (som(-E- i taskid-domain(-E- tt time-to-live(-P- washControl i MAY 0))))
+
 
     ;true-conjecture ;returns SAT, since it  finds a counterexample
 
