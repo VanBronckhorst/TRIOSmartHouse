@@ -346,7 +346,14 @@
 (defvar oven-state-definition
 	(-A- i taskid-domain( 
 		-A- time time-to-live(
-			-> (&& (&& (-P- ovenState i time) (> time 0) ) (!! (somp_e(-P- ovenControl i MAY 1)))) (somf_e(-P- ovenState i 0)))
+			-> (&&
+					(&& 
+						(-P- ovenState i time) 
+						(> time 0) 
+					) 
+					
+				) 
+				(somf_e(-P- ovenState i 0)))
 		)
 	))
 
@@ -364,19 +371,38 @@
 ( defvar oven-state-evolution
 	(-A- i taskid-domain(
 	 -A- time time-to-live(
-	 -A- time2 time-to-live( ->  ( && (next(-P- ovenState i time)) (!! (-P- msgToOven i WARN))) 
-	 	(&& (-P- ovenState i time2) (= time (- 1 time2)))
-	 )))))
+	 -A- time2 time-to-live( ->  (&& (-P- ovenState i time)
+	 								 (futr (-P- ovenState i time2) 1 )
+	 								 (-P- ovenPower POWER)
+	 							 )    
+	 							 (
+	 							 	= time2 (- time 1)
+	 							 )
+					    	)    
+    ))))
 
 
 ( defvar oven-state-motonicity
 	(-A- i taskid-domain(
+	 -A- i2 taskid-domain(
 	 -A- time time-to-live(
-	 -A- time2 time-to-live( ->  (next(-P- ovenState i time)) 
-	 	(&& (-P- ovenState i time2) (<= time time2))
+	 -A- time2 time-to-live( ->  (&& (-P- ovenState i time)
+	 								 (futr (-P- ovenState i time2) 1 )
+	 							 )
+	 							 (<= time2 time)
+	 ))))))
+
+(defvar oven-state-continuity
+	(-A- i taskid-domain(
+	 -A- time time-to-live(
+	 -E- time2 time-to-live( ->  (&& (-P- ovenState i time)
+	 							 	 (!!(-P- msgToOven i WARN))
+	 							 )
+	 							 
+	 							 	
+	 							 (futr (-P- ovenState i time2) 1 )
+	 							 	
 	 )))))
-
-
 
 ;;;;;;;;;;;;;;;;;;;
 ;; POWER BALANCE ;;
@@ -473,7 +499,7 @@
 	)
 
 (defvar oven-start-msg-conds-1
-	( -A- i taskid-domain(-> (-P- msgToOven i GO) (next(-P- ovenPower POWER) ) )
+	( -A- i taskid-domain(-> (-P- msgToOven i GO) (futr (-P- ovenPower POWER) 1 ) )
 	)
 	)
 
@@ -498,7 +524,7 @@
 	(-A- i taskid-domain(
 	 -A- i2 taskid-domain(
 	 -A- r2 resp-domain(
-	 -A- r resp-domain( -> (&& (-P- msgToOven i r) (-P- msgToOven i r2)) (&& (= r r2) (= i i2))
+	 -A- r resp-domain( -> (&& (-P- msgToOven i r) (-P- msgToOven i2 r2)) (&& (= r r2) (= i i2))
 			))
 	))))
 
@@ -536,13 +562,35 @@
 
 
 
-( defvar must-oven-response-definition(
-	-A- i taskid-domain(
-	-A- b bool( <-> (-P- ovenControl i MUST b) 
-		( && (-P- msgToOven i GO) 
-			( next( && (-P- ovenPower POWER) (-P- ovenState i TASKTIME)))))
-)))
+;( defvar must-oven-response-definition(
+;	-A- i taskid-domain(
+;	-A- b bool( <-> (-P- ovenControl i MUST b) 
+;		( && (-P- msgToOven i GO) 
+;			( next( && (-P- ovenPower POWER) (-P- ovenState i TASKTIME)))))
+;)))
 
+(defvar must-oven-response-definition
+	(-A- i taskid-domain(
+			-A- b bool(
+						->
+						(-P- ovenControl i MUST b) 
+						(-P- msgToOven i GO)
+			)
+	))	
+)
+
+(defvar goReactionOven
+	(-A- i taskid-domain(->
+							(&& (-P- msgToOven i GO)
+								(!!(-E- tt time-to-live(-P- ovenState i tt )))
+							)
+							(&&
+								(futr (-P- ovenState i TASKTIME) 1)
+								(futr (-P- ovenPower POWER) 1)
+							)
+		) 
+)
+	)
 
 
 
@@ -747,7 +795,7 @@
 (defvar performing-only-with-request-oven(
 	-A- i taskid-domain(
 	-A- time time-to-live(
-		<-> (-P- ovenState i time) (&& (somp_e(-P- ovenControl i MUST 0)) (somp_e(-P- msgToOven i GO)))
+		-> (-P- ovenState i time) (&& (somp_e(-P- ovenControl i MUST 0)) (somp_e(-P- msgToOven i GO)))
 		)
 	)))
 
@@ -761,6 +809,17 @@
 	!! (-P- ovenControl i MAY 1)
 	)))
 
+(defvar no-useless-message-oven
+	(-A- i taskid-domain(-A- m '(0 1)
+			(->
+				(-P- msgToOven i m)
+				(||
+					(-P- blackout)
+					(-P- ovenControl)
+				)
+			)
+	))
+)
 
 
 
@@ -799,6 +858,7 @@
           oven-state-unicity
 
           powerBalance-a
+          ; mon e evol da fare come oven
           wash-state-definition
           wash-state-unicity
           wash-state-evolution
@@ -844,6 +904,13 @@
 
           performing-only-with-request-oven
           performing-only-with-request-wash
+          goReactionOven
+
+          ;da fare per wash
+          no-useless-message-oven
+          oven-state-continuity
+
+
 
 
 )))      
@@ -904,13 +971,13 @@
 
 
 ;Zot call
-(eezot:zot 20
+(eezot:zot 10
   (&& 
     the-system
     (yesterday init)
     ;(!! powerneedscontr)
     ;(!! utility) ;returns UNSAT, since it cannot find counterexamples
-
+    (som(-E- i taskid-domain(-E- tt time-to-live(-P- ovenControl i MUST 0))))
 
     ;true-conjecture ;returns SAT, since it  finds a counterexample
 
