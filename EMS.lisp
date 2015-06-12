@@ -44,6 +44,12 @@
 (define-variable windmillPower dev-domain)
 
 ;axioms  
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; CONSUMPTION, PRODUCTION, MAX STATE ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (defvar consumption-Def
  (-A- x pow-domain (
   -E- a1 dev-domain(
@@ -92,6 +98,10 @@
 
 	)
 )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; UNIQUENESS OF STATES ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar unicity-cons-def
 	( -A- x pow-domain(
@@ -167,37 +177,6 @@
 	)
 
 
-(defvar wash-start-msg-conds-1
-	( -A- i taskid-domain(-> (-P- msgToWash i GO) (-P- washPower POWER))
-	)
-	)
-
-(defvar oven-start-msg-conds-1
-	( -A- i taskid-domain(-> (-P- msgToOven i GO) (-P- ovenPower POWER ) )
-	)
-	)
-
-
-;Define the Control messages without parameters used to speedup the solution
-(defvar noParamControlDef
-	(&&
-		(<-> (-P- washControl)
-			 ( -E- i1 taskid-domain(-E- i2 task-type(-E- i7 bool(
-			 	-P- washControl i1 i2 i7
-			 ))))
-		)
-
-		(<-> (-P- ovenControl)
-			 ( -E- i1 taskid-domain(-E- i2 task-type(-E- i7 bool(
-			 	-P- ovenControl i1 i2 i7
-			 ))))
-		)
-
-		
-
-	)
-)
-
 (defvar messageUnicity
 	(&&
 		( -A- i1 taskid-domain(-A- i2 task-type(-A- i7 bool(
@@ -238,6 +217,36 @@
 	)
 )
 
+
+
+
+
+;Define the Control messages without parameters used to speedup the solution
+(defvar noParamControlDef
+	(&&
+		(<-> (-P- washControl)
+			 ( -E- i1 taskid-domain(-E- i2 task-type(-E- i7 bool(
+			 	-P- washControl i1 i2 i7
+			 ))))
+		)
+
+		(<-> (-P- ovenControl)
+			 ( -E- i1 taskid-domain(-E- i2 task-type(-E- i7 bool(
+			 	-P- ovenControl i1 i2 i7
+			 ))))
+		)
+
+		
+
+	)
+)
+
+
+
+;;;;;;;;;;;
+;; POWER ;;
+;;;;;;;;;;;
+
 (defvar powerIfRequested 
 	(&&   
 
@@ -257,33 +266,13 @@
 )
 
 
-(defvar wash-response-ensurance
-	(-A- i taskid-domain( -> (-P- washControl i) ( || (-P- msgToWash i GO) (-P- msgToWash i WARN))
-		)
-		))
-
-(defvar wash-msg-unicity
-	(-A- i taskid-domain(
-		-A- r2 resp-domain(
-
-		-A- r resp-domain( -> (&& (-P- msgToWash i r) (-P- msgToWash i r2)) (= r r2)
-			))
-	)))
-
-(defvar oven-msg-unicity
-	(-A- i taskid-domain(
-	 -A- r2 resp-domain(
-	 -A- r resp-domain( -> (&& (-P- msgToOven i r) (-P- msgToOven i r2)) (= r r2)
-			))
-	)))
-
-(defvar oven-response-ensurance
-	(-A- i taskid-domain( -> (-P- ovenControl i) (|| (-P- msgToOven i GO) (-P- msgToOven i WARN))))
-)
 
 
-; Wash state and oven state
-;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; WASH STATE AND OVEN STATE ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (defvar wash-state-definition
 	(-A- i taskid-domain( 
 		-A- time time-to-live(
@@ -321,7 +310,7 @@
 	 )))))
 
 
-;;;;;;;;;;;;
+
 
 (defvar oven-state-definition
 	(-A- i taskid-domain( 
@@ -357,6 +346,12 @@
 	 )))))
 
 
+
+;;;;;;;;;;;;;;;;;;;
+;; POWER BALANCE ;;
+;;;;;;;;;;;;;;;;;;;
+
+
 (defvar powerBalance-a
 	( -A- cons pow-domain( -A- prod pow-domain(-A- bought pow-domain(
 		-> (&&  (-P- consumption cons)
@@ -370,16 +365,7 @@
 	))))
 )
 
-(defvar overflow-def
-(-A- x pow-domain(	
 
-	<-> (-P- overflow)
-		 (&&
-		 	(-P- hemPower x)
-		 	(> x MAX_FROM_HEM)
-		 )
-	)
-))
 
 (defvar useHemOnlyifNeeded
 	( -A- cons pow-domain( -A- prod pow-domain(
@@ -411,6 +397,23 @@
 	))
 )
 
+;;;;;;;;;;;;;;
+;; OVERFLOF ;;
+;;;;;;;;;;;;;;
+
+
+(defvar overflow-def
+(-A- x pow-domain(	
+
+	<-> (-P- overflow)
+		 (&&
+		 	(-P- hemPower x)
+		 	(> x MAX_FROM_HEM)
+		 )
+	)
+))
+
+
 (defvar overflow-shed
 	( -A- i taskid-domain( -A- time time-domain
 		(->  (&& (-P- overflow)
@@ -426,9 +429,44 @@
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;
-;; RESPONSE FROM EMS ;;
-;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; RESPONSES FROM EMS ;;
+;;;;;;;;;;;;;;;;;;;;;;;:
+
+(defvar wash-start-msg-conds-1
+	( -A- i taskid-domain(-> (-P- msgToWash i GO) (next(-P- washPower POWER)))
+	)
+	)
+
+(defvar oven-start-msg-conds-1
+	( -A- i taskid-domain(-> (-P- msgToOven i GO) (next(-P- ovenPower POWER) ) )
+	)
+	)
+
+
+(defvar wash-response-ensurance
+	(-A- i taskid-domain( -> (-P- washControl i) ( || (-P- msgToWash i GO) (-P- msgToWash i WARN))
+		)
+		))
+
+(defvar wash-msg-unicity
+	(-A- i taskid-domain(
+		-A- r2 resp-domain(
+
+		-A- r resp-domain( -> (&& (-P- msgToWash i r) (-P- msgToWash i r2)) (= r r2)
+			))
+	)))
+
+(defvar oven-msg-unicity
+	(-A- i taskid-domain(
+	 -A- r2 resp-domain(
+	 -A- r resp-domain( -> (&& (-P- msgToOven i r) (-P- msgToOven i r2)) (= r r2)
+			))
+	)))
+
+(defvar oven-response-ensurance
+	(-A- i taskid-domain( -> (-P- ovenControl i) (|| (-P- msgToOven i GO) (-P- msgToOven i WARN))))
+)
 
 (defvar may-wash-response-definition-ok(
 	-A- i taskid-domain(
