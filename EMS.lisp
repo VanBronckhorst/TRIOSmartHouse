@@ -330,7 +330,7 @@
 	(-A- i taskid-domain(
 	 -A- time time-to-live(
 	 -A- time2 time-to-live( ->  ( && (next(-P- washState i time)) (!! (-P- msgToWash i WARN))) 
-	 	(&& (-P- washState i time2) (= time (- 1 time2)))
+	 	(&& (-P- washState i time2) (= time (- time2 1)))
 	 )))))
 
 ( defvar wash-state-motonicity
@@ -562,6 +562,7 @@
 
 
 
+
 ;( defvar must-oven-response-definition(
 ;	-A- i taskid-domain(
 ;	-A- b bool( <-> (-P- ovenControl i MUST b) 
@@ -591,6 +592,7 @@
 		) 
 )
 	)
+
 
 
 
