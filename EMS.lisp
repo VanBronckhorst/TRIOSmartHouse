@@ -487,18 +487,20 @@
 
 (defvar wash-msg-unicity
 	(-A- i taskid-domain(
+		-A- i2 taskid-domain(
 		-A- r2 resp-domain(
 
-		-A- r resp-domain( -> (&& (-P- msgToWash i r) (-P- msgToWash i r2)) (= r r2)
+		-A- r resp-domain( -> (&& (-P- msgToWash i r) (-P- msgToWash i2 r2)) (&& (= r r2) ( = i i2))
 			))
-	)))
+	))))
 
 (defvar oven-msg-unicity
 	(-A- i taskid-domain(
+	 -A- i2 taskid-domain(
 	 -A- r2 resp-domain(
-	 -A- r resp-domain( -> (&& (-P- msgToOven i r) (-P- msgToOven i r2)) (= r r2)
+	 -A- r resp-domain( -> (&& (-P- msgToOven i r) (-P- msgToOven i r2)) (&& (= r r2) (= i i2))
 			))
-	)))
+	))))
 
 (defvar oven-response-ensurance
 	(-A- i taskid-domain( -> (-P- ovenControl i MUST 0) (-P- msgToOven i GO)))
@@ -538,7 +540,7 @@
 	-A- i taskid-domain(
 	-A- b bool( <-> (-P- ovenControl i MUST b) 
 		( && (-P- msgToOven i GO) 
-			( next( && (-P- washPower POWER) (-P- ovenState i TASKTIME)))))
+			( next( && (-P- ovenPower POWER) (-P- ovenState i TASKTIME)))))
 )))
 
 
@@ -759,20 +761,6 @@
 	!! (-P- ovenControl i MAY 1)
 	)))
 
-(defvar msg-request-wash(
-	-A- i taskid-domain(
-	-A- r resp-domain(
-	-A- m task-type(
-	-A- b bool(
-		<-> (-P- msgToWash i r) (somp_e(-P- washControl i m b))
-	))))))
-
-(defvar msg-request-oven(
-	-A- i taskid-domain(
-	-A- r resp-domain(
-		<-> (-P- msgToOven i r) (somp_e(-P- ovenControl i MUST 0)))
-	)
-	))
 
 
 
@@ -857,8 +845,6 @@
           performing-only-with-request-oven
           performing-only-with-request-wash
 
-          msg-request-oven
-          msg-request-wash
 
 )))      
 
@@ -901,20 +887,20 @@
  ; (alw (-> (-P- msgToOven 1 GO )
   ;			(-P- ovenPower 1) ) ))
 
-;(defvar true-conjecture
- ; (alw (-> (-P- msgToOven 1 GO )
-  ;			(-P- ovenPower POWER) ) ))
-
 (defvar true-conjecture
+  (alw (-> (-P- msgToOven 1 GO )
+  			(-P- ovenPower POWER) ) ))
 
-	(&&
-   		(som (&& (-P- blackout)
-   				  (-P- manualRestore)
-   				  (-E- p '( 1 2) (futr (-P- legReq p) 1))
-   			))
+;(defvar true-conjecture
+
+;	(&&
+ ;  		(som (&& (-P- blackout)
+  ; 				  (-P- manualRestore)
+   ;				  (-E- p '( 1 2) (futr (-P- legReq p) 1))
+   	;		))
    		
-   )
-)
+   ;)
+;)
 
 
 ;Zot call
@@ -926,7 +912,7 @@
     ;(!! utility) ;returns UNSAT, since it cannot find counterexamples
 
 
-    true-conjecture ;returns SAT, since it  finds a counterexample
+    ;true-conjecture ;returns SAT, since it  finds a counterexample
 
 
     ;(!! true-conjecture) ;returns SAT, since it  finds a counterexample
