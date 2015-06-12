@@ -745,19 +745,7 @@
 (define-variable washRequestTask (taskid-domain task-type bool))
 (define-variable ovenRequestTask (taskid-domain MUST 0))
 
-;(defvar wash-msg-from-to(
-;	-A- i taskid-domain(
-;	-A- r resp-domain( <-> (-P- msgFromEmsWash i r) (-P- msgToWash i r)
-;		)
-;	)
-;	))
 
-;(defvar oven-msg-from-to(
-;	-A- i taskid-domain(
-;	-A- r resp-domain( <-> (-P- msgFromEmsOven i r) (-P- msgToOven i r)
-;		)
-;	)
-;	))
 
 (defvar wash-msg-from-to-unicity(
 	-A- i taskid-domain(
@@ -777,15 +765,6 @@
 	)
 	))))
 
-;(defvar wash-msg-to-from(
-;	-A- i taskid-domain(
-;	-A- b bool(
-;	-A- m task-type( <-> (-P- washRequestTask i m b) (-P- washControl i m b)
-;	)))))
-
-;(defvar oven-msg-to-from(
-;	-A- i taskid-domain( <-> (-P- ovenRequestTask i MUST 0) (-P- ovenControl i MUST 0)
-;	)))
 
 
 (defvar no-request-while-working-wash(
@@ -829,12 +808,18 @@
 
 	))
 
-(defvar performing-only-with-request-wash-1(
-	-A- i taskid-domain(
-	-A- time time-to-live(
-		-> (-P- washState i time) (&& (somp_e(-P- washControl i MAY 1)) (somp_e(-P- msgToWash i GO)))
-		)
-	)))
+;(defvar performing-only-with-request-wash-1(
+;	-A- i taskid-domain(
+;	-A- time time-to-live(
+;		-> (-P- washState i time) (&& (somp_e(|| 
+;												(-P- washControl i MAY 1) 
+;												(||
+;													(-P- washControl i MUST 0)
+;													(-P- washControl i MAY 1)
+;													)) 
+;		(somp_e(-P- msgToWash i GO)))
+;		)
+;	))))
 
 (defvar performing-only-with-request-wash-2(
 	-A- i taskid-domain(
@@ -847,6 +832,7 @@
 	-A- i taskid-domain(
 	-A- time time-to-live(
 		-> (-P- washState i time) (&& (somp_e(-P- washControl i MUST 0)) (somp_e(-P- msgToWash i GO)))
+
 		)
 	)))
 
@@ -868,9 +854,14 @@
 	!! (-P- ovenControl i MAY 1)
 	)))
 
+(defvar no-may-oven-3(
+	-A- i taskid-domain(
+	!! (-P- ovenControl i MUST 1)
+	)))
+
 (defvar no-must-shed(
 	-A- i taskid-domain(
-	!! (-P- ovenControl i MUST 1))
+	!! (-P- washControl i MUST 1))
 	))
 
 (defvar no-useless-message-oven
@@ -976,12 +967,13 @@
 
           no-may-oven-1
           no-may-oven-2
+          no-may-oven-3
           no-must-shed
 
           performing-only-with-request-oven
-          performing-only-with-request-wash-1
-          performing-only-with-request-wash-2
-          performing-only-with-request-wash-3
+         ; performing-only-with-request-wash-1
+         ; performing-only-with-request-wash-2
+         ; performing-only-with-request-wash-3
           goReactionOven
 
           ;da fare per wash
@@ -1054,7 +1046,7 @@
 
 
 ;Zot call
-(eezot:zot 20
+(eezot:zot 10
   (&& 
     the-system
     (yesterday init)
