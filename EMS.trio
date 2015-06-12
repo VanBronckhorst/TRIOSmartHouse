@@ -302,7 +302,7 @@ signature:
 			Defines that if there is an overflow, and a task that can be shifted is in execution and it wasn’t stop more than the number of allowed stop,
 			 than this task is interrupted (power set to 0) for at most the maximum amount of time specified in the initial request.
 		*/
-		OverflowMeasuresShift:
+		OverflowMeasuresShift: //not necessary
 		overflow & washState(i,t,e) & stopCounter(i,nstop) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>nstop & washPower(i) & i>0 -> (Lasts(washPower(0),d) | WithinF(consumption+p<maxxx & max(maxxx),d) ) &
 		consumption(cons) & (cons+p<max) & washState(i,t) & SomP(washControl(i,May,p,t1,s,d,sh,b)) & t>0 & washPower(0) -> NowOn(washPower(p))
 		
@@ -311,7 +311,7 @@ signature:
 			then the task is executed using this power.
 			In our system only task scheduled by the washing machine and the heating system can be balanced
 		*/
-		OverflowMeasuresBalance:
+		OverflowMeasuresBalance: //not necessary
 		overflow & washState(i,t1,e) & t1>0 & SomP(washControl(i,May,p,t,s,d,sh,1)) & washPower(nowWash) & nowWash > 0 & max(tot)& ex(z)(z>0 & z<p & consumption(now) & (now-nowWash+z=tot) )  -> NowOn(washPower(z))
 		overflow & ex(i)(roomHeating(i) & termPowerConsumption(nowTerm) & nowTerm > 0  & max(tot) & ex(z) (z>0 & consumption(now) & (now-nowTerm+z<=tot)) -> NowOn(termPowerConsumption(z))
 
@@ -335,7 +335,7 @@ signature:
 			energy and time will become 0 in the future except when the task allows load shedding. It then defines the monotonicity of the energy. 
 			Lastly it defines how the energy value and the time parameter change and how the energy and time parameters are correlated.
 		*/
-		WashStateDefinition: 
+		WashStateDefinition: //done
 		washState(i,t,e) & e>0 & t>0 & not(SomP(washControl(i,m,p,t,s,d,sh,1))) -> SomF(washState(i,0,0)) 
 		UpToNow(washState(i,t,e)) -> Until(washState(i,t1,e1) & e1<=e,(msgToWash(i2,Start) & i2<>i)) &
 		Past(washState(i,t,e),t1) & Lasted(washPower(p),t1) -> washState(i,t2,e1) & e1=e-p*t1 & t2=e1/p;
@@ -346,7 +346,7 @@ signature:
 			energy and time will become 0 in the future except when the task allows load shedding. It then defines the monotonicity of the energy. 
 			Lastly it defines how the energy value and the time parameter change and how the energy and time parameters are correlated.
 		*/
-		OvenStateDefinition:
+		OvenStateDefinition: //done
 		ovenState(i,t,e) & e>0 & t>0 & not(SomP(ovenControl(i,m,p,t,s,d,sh,1))) -> SomF(ovenState(i,0,0) 
 		UpToNow(ovenState(i,t,e)) -> Until(ovenState(i,t1,e1) & e1<=e,(msgToOven(i2,Start) & i2<>i)) &
 		Past(ovenState(i,t,e),t1) & Lasted(ovenPower(p),t1) -> ovenState(i,t2,e1) & e1=e-p*t1 & t2=e1/p;

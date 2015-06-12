@@ -7,9 +7,11 @@
 (defconstant MAX_FROM_HEM 2)
 (defconstant POWER 1)
 (defconstant TASKTIME 4)
+(defconstant MAY 0)
+(defconstant MUST 1)
 
 (defvar pow-domain (loop for i from 0 to 5 collect i))
-(defvar time-domain (loop for i from 0 to 5 collect i))
+(defvar time-domain (loop for i from 0 to 4 collect i))
 (defvar slot-domain (loop for i from 0 to 3 collect i))
 (defvar dev-domain (loop for i from 0 to 2 collect i))
 (defvar taskid-domain (loop for i from 0 to 2 collect i))
@@ -287,7 +289,7 @@
 		-A- time time-to-live(
 			-> (&& 
 					(&& (-P- washState i time) (> time 0) ) 
-					(!! (somp_e(-P- washControl i TASKTIME 1)))
+					(!! (somp_e(-P- washControl i MAY 1)))
 				) 
 			   (somf_e(-P- washState i 0)))
 		)
@@ -324,7 +326,7 @@
 (defvar oven-state-definition
 	(-A- i taskid-domain( 
 		-A- time time-to-live(
-			-> (&& (&& (-P- ovenState i time) (> time 0) ) (!! (somp_e(-P- ovenControl i TASKTIME 1)))) (somf_e(-P- ovenState i 0)))
+			-> (&& (&& (-P- ovenState i time) (> time 0) ) (!! (somp_e(-P- ovenControl i MAY 1)))) (somf_e(-P- ovenState i 0)))
 		)
 	))
 
@@ -410,18 +412,59 @@
 )
 
 (defvar overflow-shed
-	( -A- i taskid-domain( -A- t time-domain
+	( -A- i taskid-domain( -A- time time-domain
 		(->  (&& (-P- overflow)
 			 	 (somp (-P- washControl i 0 1) )
-			 	 (-P- washState i t)
+			 	 (-P- washState i time)
 			 )
 			 ( &&  (-P- msgToWash i WARN)
 			 	    (next(-P- washPower 0)))
 		)
 	)
 
-)
+))
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; RESPONSE FROM EMS ;;
+;;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar may-wash-response-definition-ok(
+	-A- i taskid-domain(
+	-A- b bool(
+	-A- p pow-domain(
+	-A- p2 pow-domain
+	( -> ( && (-P- washControl i MAY b) (&& (-P- consumption p) (&& (-P- max p2) (> p2 (+ p POWER)))) ) 
+		( && (-P- msgToWash i GO) ( next( && (-P- washPower POWER) (-P- washState i TASKTIME)))
+		)
+	)))
+)))
+
+(defvar may-wash-response-definition-ko(
+	-A- i taskid-domain(
+	-A- b bool(
+	-A- p pow-domain(
+	-A- p2 pow-domain
+	( -> ( && (-P- washControl i MAY b) (&& (-P- consumption p) (&& (-P- max p2) (< p2 (+ p POWER)))) ) 
+		( && (-P- msgToWash i WARN) 
+			(somf_e(&& (-P- msgToWash i GO) ( && (-P- washPower POWER) (-P- washState i TASKTIME))))
+	))
+)))))
+
+( defvar must-wash-response-definition(
+	-A- i taskid-domain(
+	-A- b bool( -> (-P- washControl i MUST b) 
+		( && (-P- msgToWash i GO) ( next( && (-P- washPower POWER) (-P- washState i TASKTIME))))))))
+
+
+
+( defvar must-oven-response-definition(
+	-A- i taskid-domain(
+	-A- b bool( -> (-P- ovenControl i MUST b) 
+		( && (-P- msgToOven i GO) 
+			( next( && (-P- washPower POWER) (-P- ovenState i TASKTIME)))))
+)))
 
 
 
@@ -465,6 +508,11 @@
           overflow-def
           useHemOnlyifNeeded
           useHemOnlyifNeeded-b
+
+		  may-wash-response-definition-ko
+          may-wash-response-definition-ok
+          must-wash-response-definition
+          must-oven-response-definition
 )))      
 
 ;;
@@ -505,9 +553,15 @@
  ; (alw (-> (-P- msgToOven 1 GO )
   ;			(-P- ovenPower 1) ) ))
 
+;(defvar true-conjecture
+ ; (alw (-> (-P- msgToOven 1 GO )
+  ;			(-P- ovenPower POWER) ) ))
+
 (defvar true-conjecture
-  (alw (-> (-P- msgToOven 1 GO )
-  			(-P- ovenPower POWER) ) ))
+	(alw (-> ( && (-P- washControl 1 MUST 0) ( && (-P- consumption 1) (-P- max 5))) ( && (-P- msgToWash 1 GO) (next(&& (-P- washPower POWER) (-P- washState 1 TASKTIME) ) ))
+		)))
+
+
 
 ;Zot call
 (eezot:zot 20
@@ -516,6 +570,6 @@
     (yesterday init)
     ;(!! powerneedscontr)
     ;(!! utility) ;returns UNSAT, since it cannot find counterexamples
-    ;(!! true-conjecture) ;returns SAT, since it  finds a counterexample
+    (!! true-conjecture) ;returns SAT, since it  finds a counterexample
   ) 
 )
