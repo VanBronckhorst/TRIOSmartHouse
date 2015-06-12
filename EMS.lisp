@@ -7,11 +7,16 @@
 (defconstant MAX_FROM_HEM 2)
 (defconstant POWER 1)
 (defconstant TASKTIME 4)
+
 (defconstant MAY 0)
 (defconstant MUST 1)
 
-(defvar pow-domain (loop for i from 0 to 5 collect i))
-(defvar time-domain (loop for i from 0 to 4 collect i))
+(defconstant MAX_OVF 3)
+(defconstant MAX_TIME_OVER 3)
+
+(defvar pow-domain (loop for i from 0 to 6 collect i))
+(defvar time-domain (loop for i from 0 to 5 collect i))
+
 (defvar slot-domain (loop for i from 0 to 3 collect i))
 (defvar dev-domain (loop for i from 0 to POWER collect i))
 (defvar taskid-domain (loop for i from 0 to 2 collect i))
@@ -28,9 +33,10 @@
 (define-variable washPower dev-domain)
 (define-variable ovenPower dev-domain)
 (define-variable legPower dev-domain)
+(define-variable legReq dev-domain)
 (define-variable solarPower dev-domain)
 (define-variable windmillPower dev-domain)
-(define-variable hemPower dev-domain)
+(define-variable hemPower pow-domain)
 (define-variable msgToWash (taskid-domain resp-domain))
 (define-variable msgToOven (taskid-domain resp-domain))
 (define-variable windmillPower dev-domain)
@@ -99,9 +105,11 @@
 		(-E- x dev-domain(-P- washPower x))
 		(-E- x dev-domain(-P- ovenPower x))
 		(-E- x dev-domain(-P- legPower x))
+		(-E- x dev-domain(-P- legReq x))
 		(-E- x dev-domain(-P- solarPower x))
 		(-E- x dev-domain(-P- windmillPower x))
 		(-E- x pow-domain(-P- hemPower x))
+
 
 	)
 )
@@ -135,8 +143,8 @@
 	)
 
 (defvar unicity-hem-def 
-	( -A- x pow-domain(
-	  -A- x2 pow-domain(-> (&& (-P- hemPower x) (-P- hemPower x2))
+	( -A- x '(-6 -5 -4 -3 -2 -1 0 1 2 3 4 5 6)(
+	  -A- x2 '(-6 -5 -4 -3 -2 -1 0 1 2 3 4 5 6)(-> (&& (-P- hemPower x) (-P- hemPower x2))
 	  					   (= x x2)
 	  					))
 	)
@@ -162,6 +170,14 @@
 (defvar unicity-leg-def
 	( -A- x dev-domain(
 	  -A- x2 dev-domain(-> (&& (-P- legPower x) (-P- legPower x2))
+	  					   (= x x2)
+	  					))
+	)
+	)
+
+(defvar unicity-legreq-def
+	( -A- x dev-domain(
+	  -A- x2 dev-domain(-> (&& (-P- legReq x) (-P- legReq x2))
 	  					   (= x x2)
 	  					))
 	)
@@ -272,6 +288,14 @@
 	)
 )
 
+(defvar legpower-def
+	( -A- p dev-domain( -> (-P- legReq p)
+							(|| (-P- legPower p)
+								(-P- blackout))
+					  )
+	)
+)
+
 
 
 
@@ -373,6 +397,17 @@
 )
 
 
+(defvar overflow-def
+(<-> 
+	(-P- overflow)
+	(-E- x pow-domain(&&
+		 				(-P- hemPower x)
+		 				(> x MAX_FROM_HEM)
+		 			)	
+	)
+	
+))
+
 
 (defvar useHemOnlyifNeeded
 	( -A- cons pow-domain( -A- prod pow-domain(
@@ -409,20 +444,11 @@
 ;;;;;;;;;;;;;;
 
 
-(defvar overflow-def
-(-A- x pow-domain(	
-
-	<-> (-P- overflow)
-		 (&&
-		 	(-P- hemPower x)
-		 	(> x MAX_FROM_HEM)
-		 )
-	)
-))
-
 
 (defvar overflow-shed
-	( -A- i taskid-domain( -A- time time-domain
+
+	( -A- i taskid-domain( -A- time time-to-live
+
 		(->  (&& (-P- overflow)
 			 	 (somp (-P- washControl i 0 1) )
 			 	 (-P- washState i time)
@@ -433,6 +459,7 @@
 	)
 
 ))
+
 
 
 
@@ -477,6 +504,7 @@
 	(-A- i taskid-domain( -> (-P- ovenControl i MUST 0) (-P- msgToOven i GO)))
 )
 
+
 (defvar may-wash-response-definition-ok(
 	-A- i taskid-domain(
 	-A- b bool(
@@ -513,6 +541,99 @@
 			( next( && (-P- washPower POWER) (-P- ovenState i TASKTIME)))))
 )))
 
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; BLACKOUT ;;
+;;;;;;;;;;;;;;;;;;;;;;;:
+
+(defvar blackout-def
+   
+	   (<->	(-E- p pow-domain(
+						   		||
+						   			(&&
+						   				(-P- hemPower p) 
+						   				(> p MAX_OVF)
+						   			) 
+						   			(&&
+						   				(> p MAX_FROM_HEM)
+						   				(lasted_ii (-P- hemPower p) MAX_TIME_OVER )
+						   			)
+						   		)	
+	   		)
+
+	   		(&& 
+	   			(!! (-P- blackout))
+	   			(futr (-P- blackout) 1)
+	   		)
+
+
+	   )
+   
+
+)
+
+(defvar blackout-continuity
+	(->
+		(-P- blackout)
+		(until (-P- blackout) (-P- manualRestore)
+		) 
+	)
+
+)
+
+(defvar blackout-noPow
+	(->
+		(-P- blackout)
+		(-P- consumption 0)
+		) 
+	)
+
+(defvar restore-def
+	(->
+		(-P- manualRestore)
+		(&&
+			(-P- blackout)
+			(futr (!! (-P- blackout)) 1)
+		)
+	)
+
+)
+
+(defvar restore-power-wash
+	(-E- i taskid-domain(-E- tp time-to-live(
+		-> (&&
+		   		(past (-P- manualRestore) 1)
+		   		(&&
+					(-P- washState i tp)
+					(> tp 0)
+
+		   		)
+		)
+		(
+			-P- msgToWash i GO
+		)
+
+	)))
+)
+
+(defvar restore-power-oven
+	(-E- i taskid-domain(-E- tp time-to-live(
+		-> (&&
+		   		(past (-P- manualRestore) 1)
+		   		(&&
+					(-P- ovenState i tp)
+					(> tp 0)
+
+		   		)
+		)
+		(
+			-P- msgToOven i GO
+		)
+
+	)))
+)
 
 
 
@@ -665,9 +786,11 @@
           consumption-Def
           production-Def
           max-def
+          legpower-def
           existance
           unicity-hem-def
           unicity-max-def
+          unicity-legreq-def
           unicity-prod-def
           unicity-oven-def
           unicity-wash-def
@@ -699,10 +822,20 @@
           useHemOnlyifNeeded
           useHemOnlyifNeeded-b
 
+
 		  may-wash-response-definition-ko
           may-wash-response-definition-ok
           must-wash-response-definition
           must-oven-response-definition
+
+
+          blackout-def
+          overflow-shed
+          blackout-continuity
+          blackout-noPow
+          restore-def
+          restore-power-oven
+          restore-power-wash
 
           no-request-while-working-oven
           no-request-while-working-wash
@@ -726,6 +859,7 @@
 
           msg-request-oven
           msg-request-wash
+
 )))      
 
 ;;
@@ -738,7 +872,8 @@
 )
 	
 (defvar init
-  (&&
+  (&&   
+  	    (!! (-P- blackout))
   		(alwp_i (!! (-P- ovenControl)))
   		(-A- x taskid-domain(-A- x2 task-type(-A- x3 bool(!! (-P- washControl x x2 x3)))))
   ))	
@@ -771,9 +906,15 @@
   ;			(-P- ovenPower POWER) ) ))
 
 (defvar true-conjecture
-	(alw (-> ( && (-P- washControl 1 MUST 0) ( && (-P- consumption 1) (-P- max 5))) ( && (-P- msgToWash 1 GO) (next(&& (-P- washPower POWER) (-P- washState 1 TASKTIME) ) ))
-		)))
 
+	(&&
+   		(som (&& (-P- blackout)
+   				  (-P- manualRestore)
+   				  (-E- p '( 1 2) (futr (-P- legReq p) 1))
+   			))
+   		
+   )
+)
 
 
 ;Zot call
@@ -783,6 +924,12 @@
     (yesterday init)
     ;(!! powerneedscontr)
     ;(!! utility) ;returns UNSAT, since it cannot find counterexamples
+
+
+    true-conjecture ;returns SAT, since it  finds a counterexample
+
+
     ;(!! true-conjecture) ;returns SAT, since it  finds a counterexample
+
   ) 
 )
