@@ -197,7 +197,7 @@ signature:
 			3) Max: it is the maximum amount of power that can be consumed ad any istant. It is the sum of power produced, the power that the batteries
 			        can produce and the power that can be bought from network(MAX_FROM_HEM)
 		*/
-		ConsumptionDefinition:
+		ConsumptionDefinition: //done
 		consumption(i) <-> washPower(a1) & ovenPower(a2) & legacyPower1(a3) & termPowerConsumption(a4) (i=a1+a2+a3+a4)  &
 		production(i) <-> windmillPower(a1) & solarPower(a2) & (i=a1+a2)  &
 		max(i) <-> production(a) & batteryPower(b) & (i = a + b + MAX_FROM_HEM) &
@@ -208,7 +208,7 @@ signature:
 		/*
 			Defines that all the states that represents a power erogated or supplied are true only for 1 value at any moment
 		*/
-		PowerUnicity:
+		PowerUnicity: //dpne
 		washPower(cons) & washPower(cons2)-> cons=cons2 &
 		ovenPower(cons) & ovenPower(cons2)-> cons=cons2 &
 		windmillPower(cons) & windmillPower(cons2)-> cons=cons2 &
@@ -235,7 +235,7 @@ signature:
 			2) Must task: - a must task doesn't allows load balancing, shedding or shifting and can't be postponed. So, when a must request is received,
 							a positive message is sent the device and the power is set to the required one
 		*/
-		ResponsesFromEMS:
+		ResponsesFromEMS: //done
 		washControl(i,May,p,t,s,d,sh,b) & consumption(cons) & max(maxxx) & (cons + p < maxxx)  -> (msgToWash(i,Start) & washPower(p) & washStopCounter(i,0) & washState(i,t,p*t)) &
 		washControl(i,Must,p,t,s,d,sh,b) -> msgToWash(i,Start) & washPower(p) & washStopCounter(i,0) & washState(i,t,p*t) &
 		washControl(i,May,p,t,s,d,sh,0) & consumption(cons) & (cons + p > max)  -> (msgToWash(i,Warn) & washPower(0) & SomF(msgToWash(i,Start) & washPower(p) & washStopCounter(i,0) & washState(i,t,p*t)) &
@@ -283,7 +283,7 @@ signature:
 			3) if the power received from the network is greater than the maximum amount of power that can be bought, then we are in overflow.
 			4) if the power produced is less than the power produced and the batteries are not full, then the exceeding power is used to charge the batteries.
 		*/
-		PowerBalance:
+		PowerBalance: //done
 		consumption(con) & production(prod) & hemPower(bought) & batteryPower(bat) -> con<=production+bought+bat &
 		(washPower(w) & ovenPower(o) & termPowerConsumption(tp) & legacyPower1(l) & windmillPower(p) & solarPower(s) & (w+o+l+tp=p+s)) -> (hemPower(0) & batteryPower(0)) &
 		(hemPower>=MAX_FROM_HEM) -> overflow &
@@ -293,7 +293,7 @@ signature:
 			If there is an overflow, and a sheddable task is in execution, than this task is interrupted(power set to 0) and a warning message is sent
 			to the device
 		*/
-		OverflowMeasuresShed:
+		OverflowMeasuresShed: //Done
 
 		overflow & washState(i,t,e) & SomP(washControl(i,May,p,t,s,d,1,b)) ->  msgToWash(i,Warn) & NowOn(washPower(0));
 

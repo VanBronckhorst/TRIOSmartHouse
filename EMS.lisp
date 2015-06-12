@@ -18,7 +18,7 @@
 (defvar time-domain (loop for i from 0 to 5 collect i))
 
 (defvar slot-domain (loop for i from 0 to 3 collect i))
-(defvar dev-domain (loop for i from 0 to 2 collect i))
+(defvar dev-domain (loop for i from 0 to POWER collect i))
 (defvar taskid-domain (loop for i from 0 to 2 collect i))
 (defvar time-to-live (loop for i from 0 to TASKTIME collect i))
 (defvar resp-domain '(0 1))
@@ -40,10 +40,13 @@
 (define-variable msgToWash (taskid-domain resp-domain))
 (define-variable msgToOven (taskid-domain resp-domain))
 (define-variable windmillPower dev-domain)
-(define-variable ovenControl (taskid-domain task-type bool ))
+(define-variable ovenControl (taskid-domain MUST 0 ))
 (define-variable washControl (taskid-domain task-type bool ))
 (define-variable washState (taskid-domain time-to-live))
 (define-variable ovenState (taskid-domain time-to-live))
+
+
+
 
 
 
@@ -476,9 +479,11 @@
 
 
 (defvar wash-response-ensurance
-	(-A- i taskid-domain( -> (-P- washControl i) ( || (-P- msgToWash i GO) (-P- msgToWash i WARN))
+	(-A- i taskid-domain(
+	 -A- m task-type(
+	 -A- b bool( -> (-P- washControl i m b) ( || (-P- msgToWash i GO) (-P- msgToWash i WARN))
 		)
-		))
+		))))
 
 (defvar wash-msg-unicity
 	(-A- i taskid-domain(
@@ -496,7 +501,7 @@
 	)))
 
 (defvar oven-response-ensurance
-	(-A- i taskid-domain( -> (-P- ovenControl i) (|| (-P- msgToOven i GO) (-P- msgToOven i WARN))))
+	(-A- i taskid-domain( -> (-P- ovenControl i MUST 0) (-P- msgToOven i GO)))
 )
 
 
@@ -505,7 +510,7 @@
 	-A- b bool(
 	-A- p pow-domain(
 	-A- p2 pow-domain
-	( -> ( && (-P- washControl i MAY b) (&& (-P- consumption p) (&& (-P- max p2) (> p2 (+ p POWER)))) ) 
+	( <-> ( && (-P- washControl i MAY b) (&& (-P- consumption p) (&& (-P- max p2) (> p2 (+ p POWER)))) ) 
 		( && (-P- msgToWash i GO) ( next( && (-P- washPower POWER) (-P- washState i TASKTIME)))
 		)
 	)))
@@ -516,7 +521,7 @@
 	-A- b bool(
 	-A- p pow-domain(
 	-A- p2 pow-domain
-	( -> ( && (-P- washControl i MAY b) (&& (-P- consumption p) (&& (-P- max p2) (< p2 (+ p POWER)))) ) 
+	( <-> ( && (-P- washControl i MAY b) (&& (-P- consumption p) (&& (-P- max p2) (< p2 (+ p POWER)))) ) 
 		( && (-P- msgToWash i WARN) 
 			(somf_e(&& (-P- msgToWash i GO) ( && (-P- washPower POWER) (-P- washState i TASKTIME))))
 	))
@@ -524,17 +529,18 @@
 
 ( defvar must-wash-response-definition(
 	-A- i taskid-domain(
-	-A- b bool( -> (-P- washControl i MUST b) 
+	-A- b bool( <-> (-P- washControl i MUST b) 
 		( && (-P- msgToWash i GO) ( next( && (-P- washPower POWER) (-P- washState i TASKTIME))))))))
 
 
 
 ( defvar must-oven-response-definition(
 	-A- i taskid-domain(
-	-A- b bool( -> (-P- ovenControl i MUST b) 
+	-A- b bool( <-> (-P- ovenControl i MUST b) 
 		( && (-P- msgToOven i GO) 
 			( next( && (-P- washPower POWER) (-P- ovenState i TASKTIME)))))
 )))
+
 
 
 
@@ -630,9 +636,105 @@
 )
 
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;						DEVICE					  ;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-variable msgFromEmsOven (taskid-domain resp-domain))
+(define-variable msgFromEmsWash (taskid-domain resp-domain))
+
+(define-variable washRequestTask (taskid-domain task-type bool))
+(define-variable ovenRequestTask (taskid-domain MUST 0))
+
+(defvar wash-msg-from-to(
+	-A- i taskid-domain(
+	-A- r resp-domain( <-> (-P- msgFromEmsWash i r) (-P- msgToWash i r)
+		)
+	)
+	))
+
+(defvar oven-msg-from-to(
+	-A- i taskid-domain(
+	-A- r resp-domain( <-> (-P- msgFromEmsOven i r) (-P- msgToOven i r)
+		)
+	)
+	))
+
+(defvar wash-msg-from-to-unicity(
+	-A- i taskid-domain(
+	-A- r resp-domain(
+	-A- i1 taskid-domain(
+	-A- r1 resp-domain( -> ( && (-P- msgFromEmsWash i r) (-P- msgFromEmsWash i1 r1)) (&& (= i i1) (= r r1))
+		)
+	)
+	))))
+
+(defvar oven-msg-from-to-unicity(
+	-A- i taskid-domain(
+	-A- r resp-domain(
+	-A- i1 taskid-domain(
+	-A- r1 resp-domain( -> ( && (-P- msgFromEmsOven i r) (-P- msgFromEmsOven i1 r1)) (&& (= i i1) (= r r1))
+		)
+	)
+	))))
+
+(defvar wash-msg-to-from(
+	-A- i taskid-domain(
+	-A- b bool(
+	-A- m task-type( <-> (-P- washRequestTask i m b) (-P- washControl i m b)
+	)))))
+
+(defvar oven-msg-to-from(
+	-A- i taskid-domain( <-> (-P- ovenRequestTask i MUST 0) (-P- ovenControl i MUST 0)
+	)))
+
+
+(defvar no-request-while-working-wash(
+	-A- i taskid-domain(
+	-A- i1 taskid-domain(
+	-A- time time-to-live(
+	-A- m task-type(
+	-A- b bool( -> ( && (-P- washState i time) ( > time 0)) (!! (-P- washRequestTask i1 m b))
+		))
+	)))))
+
+
+(defvar no-request-while-working-oven(
+	-A- i taskid-domain(
+	-A- i1 taskid-domain(
+	-A- time time-to-live( -> ( && (-P- ovenState i time) ( > time 0)) (!! (-P- ovenRequestTask i1 MUST 0))
+		)
+	))))
+
+
+(defvar request-unicity-wash(
+	-A- i taskid-domain(
+	-A- i1 taskid-domain(
+	-A- b bool(
+	-A- b1 bool(
+	-A- m task-type(
+	-A- m1 task-type(
+		-> ( && (-P- washRequestTask i m b) (-P- washRequestTask i1 m1 b1)) ( && ( = i i1) (&& ( = m m1) (= b b1)) )
+		)
+		))
+
+	)))))
+
+
+(defvar request-unicity-oven(
+	-A- i taskid-domain(
+	-A- i1 taskid-domain(
+		-> ( && (-P- ovenRequestTask i MUST 0) (-P- ovenRequestTask i1 MUST 0)) ( = i i1)  
+		)
+		)
+
+	))
+
+(defvar mess)
+
+
+
 
 
 
@@ -688,11 +790,28 @@
           must-wash-response-definition
           must-oven-response-definition
 
+
           blackout-def
           overflow-shed
           blackout-continuity
           blackout-noPow
           restore-def
+          restore-power-oven
+          restore-power-wash
+
+          no-request-while-working-oven
+          no-request-while-working-wash
+
+          oven-msg-from-to
+          wash-msg-from-to
+
+          request-unicity-wash
+          request-unicity-oven
+
+          oven-msg-to-from
+          wash-msg-to-from
+          oven-msg-from-to-unicity
+          wash-msg-from-to-unicity
 
 )))      
 
@@ -759,7 +878,11 @@
     ;(!! powerneedscontr)
     ;(!! utility) ;returns UNSAT, since it cannot find counterexamples
 
+
     true-conjecture ;returns SAT, since it  finds a counterexample
+
+
+    ;(!! true-conjecture) ;returns SAT, since it  finds a counterexample
 
   ) 
 )
