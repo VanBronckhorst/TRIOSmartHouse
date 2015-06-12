@@ -526,25 +526,25 @@
 (define-variable washRequestTask (taskid-domain task-type bool))
 (define-variable ovenRequestTask (taskid-domain MUST 0))
 
-(defvar wash-msg-from-to(
-	-A- i taskid-domain(
-	-A- r resp-domain( <-> (-P- msgFromEmsWash i r) (-P- msgToWash i r)
-		)
-	)
-	))
+;(defvar wash-msg-from-to(
+;	-A- i taskid-domain(
+;	-A- r resp-domain( <-> (-P- msgFromEmsWash i r) (-P- msgToWash i r)
+;		)
+;	)
+;	))
 
-(defvar oven-msg-from-to(
-	-A- i taskid-domain(
-	-A- r resp-domain( <-> (-P- msgFromEmsOven i r) (-P- msgToOven i r)
-		)
-	)
-	))
+;(defvar oven-msg-from-to(
+;	-A- i taskid-domain(
+;	-A- r resp-domain( <-> (-P- msgFromEmsOven i r) (-P- msgToOven i r)
+;		)
+;	)
+;	))
 
 (defvar wash-msg-from-to-unicity(
 	-A- i taskid-domain(
 	-A- r resp-domain(
 	-A- i1 taskid-domain(
-	-A- r1 resp-domain( -> ( && (-P- msgFromEmsWash i r) (-P- msgFromEmsWash i1 r1)) (&& (= i i1) (= r r1))
+	-A- r1 resp-domain( -> ( && (-P- msgToWash i r) (-P- msgToWash i1 r1)) (&& (= i i1) (= r r1))
 		)
 	)
 	))))
@@ -553,20 +553,20 @@
 	-A- i taskid-domain(
 	-A- r resp-domain(
 	-A- i1 taskid-domain(
-	-A- r1 resp-domain( -> ( && (-P- msgFromEmsOven i r) (-P- msgFromEmsOven i1 r1)) (&& (= i i1) (= r r1))
+	-A- r1 resp-domain( -> ( && (-P- msgToOven i r) (-P- msgToOven i1 r1)) (&& (= i i1) (= r r1))
 		)
 	)
 	))))
 
-(defvar wash-msg-to-from(
-	-A- i taskid-domain(
-	-A- b bool(
-	-A- m task-type( <-> (-P- washRequestTask i m b) (-P- washControl i m b)
-	)))))
+;(defvar wash-msg-to-from(
+;	-A- i taskid-domain(
+;	-A- b bool(
+;	-A- m task-type( <-> (-P- washRequestTask i m b) (-P- washControl i m b)
+;	)))))
 
-(defvar oven-msg-to-from(
-	-A- i taskid-domain( <-> (-P- ovenRequestTask i MUST 0) (-P- ovenControl i MUST 0)
-	)))
+;(defvar oven-msg-to-from(
+;	-A- i taskid-domain( <-> (-P- ovenRequestTask i MUST 0) (-P- ovenControl i MUST 0)
+;	)))
 
 
 (defvar no-request-while-working-wash(
@@ -574,7 +574,7 @@
 	-A- i1 taskid-domain(
 	-A- time time-to-live(
 	-A- m task-type(
-	-A- b bool( -> ( && (-P- washState i time) ( > time 0)) (!! (-P- washRequestTask i1 m b))
+	-A- b bool( -> ( && (-P- washState i time) ( > time 0)) (!! (-P- washControl i1 m b))
 		))
 	)))))
 
@@ -582,7 +582,7 @@
 (defvar no-request-while-working-oven(
 	-A- i taskid-domain(
 	-A- i1 taskid-domain(
-	-A- time time-to-live( -> ( && (-P- ovenState i time) ( > time 0)) (!! (-P- ovenRequestTask i1 MUST 0))
+	-A- time time-to-live( -> ( && (-P- ovenState i time) ( > time 0)) (!! (-P- ovenControl i1 MUST 0))
 		)
 	))))
 
@@ -594,7 +594,7 @@
 	-A- b1 bool(
 	-A- m task-type(
 	-A- m1 task-type(
-		-> ( && (-P- washRequestTask i m b) (-P- washRequestTask i1 m1 b1)) ( && ( = i i1) (&& ( = m m1) (= b b1)) )
+		-> ( && (-P- washControl i m b) (-P- washControl i1 m1 b1)) ( && ( = i i1) (&& ( = m m1) (= b b1)) )
 		)
 		))
 
@@ -604,16 +604,54 @@
 (defvar request-unicity-oven(
 	-A- i taskid-domain(
 	-A- i1 taskid-domain(
-		-> ( && (-P- ovenRequestTask i MUST 0) (-P- ovenRequestTask i1 MUST 0)) ( = i i1)  
+		-> ( && (-P- ovenControl i MUST 0) (-P- ovenControl i1 MUST 0)) ( = i i1)  
 		)
 		)
 
 	))
 
-(defvar mess)
+(defvar performing-only-with-request-wash(
+	-A- i taskid-domain(
+	-A- time time-to-live(
+	-A- m task-type(
+	-A- b bool( <-> (-P- washState i time) ( && (somp_e(-P- washControl i m b)) (somp_e(-P- msgToWash i GO)))
+		)
+	))
+	)
+	))
 
 
+(defvar performing-only-with-request-oven(
+	-A- i taskid-domain(
+	-A- time time-to-live(
+		<-> (-P- ovenState i time) (&& (somp_e(-P- ovenControl i MUST 0)) (somp_e(-P- msgToOven i GO)))
+		)
+	)))
 
+(defvar no-may-oven-1(
+	-A- i taskid-domain(
+	!! (-P- ovenControl i MAY 0))
+	))
+
+(defvar no-may-oven-2(
+	-A- i taskid-domain(
+	!! (-P- ovenControl i MAY 1)
+	)))
+
+(defvar msg-request-wash(
+	-A- i taskid-domain(
+	-A- r resp-domain(
+	-A- m task-type(
+	-A- b bool(
+		<-> (-P- msgToWash i r) (somp_e(-P- washControl i m b))
+	))))))
+
+(defvar msg-request-oven(
+	-A- i taskid-domain(
+	-A- r resp-domain(
+		<-> (-P- msgToOven i r) (somp_e(-P- ovenControl i MUST 0)))
+	)
+	))
 
 
 
@@ -669,16 +707,25 @@
           no-request-while-working-oven
           no-request-while-working-wash
 
-          oven-msg-from-to
-          wash-msg-from-to
+        ;  oven-msg-from-to
+         ; wash-msg-from-to
 
           request-unicity-wash
           request-unicity-oven
 
-          oven-msg-to-from
-          wash-msg-to-from
+          ;oven-msg-to-from
+          ;wash-msg-to-from
           oven-msg-from-to-unicity
           wash-msg-from-to-unicity
+
+          no-may-oven-1
+          no-may-oven-2
+
+          performing-only-with-request-oven
+          performing-only-with-request-wash
+
+          msg-request-oven
+          msg-request-wash
 )))      
 
 ;;
