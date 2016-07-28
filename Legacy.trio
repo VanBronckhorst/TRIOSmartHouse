@@ -1,22 +1,40 @@
 class LegacyDevice (const MaxPower)
 signature:
-	visible: PowerRequired //serve visible? -> PowerSupplied;
+	visible: PowerRequired, PowerSupplied;
 	temporal domain: real
-
 	domains:
-	PowerType: 1..MaxPower; 
+	PowerAmount: 1..MaxPower; 
 
 	items:
-	state PowerRequired(PowerType);
-	state PowerSupplied(PowerType);
+		
+		/*
+			State that represents the amount of power required by a legacy device
+			@param PowerAmount: the amount of power required
+		*/
+		state powerRequired(PowerAmount);
+
+		/*
+			State that represents the amount of power supplied to a legacy device
+			@param PowerAmount: the amount of power supplied
+		*/		
+		state powerSupplied(PowerAmount);
 
 	axioms:
-	var:
-	p,p1:PowerType;
 
-	formulae:
-	
-	Definition of power consumption:
-	(PowerRequired(p)&PowerSupplied(p1)) -> (p=p1)|(p1=0);
+		var:
+		p,p1:PowerAmount;
+
+		formulae:
+		
+<<<<<<< Updated upstream
+		/*
+			Axiom that defines that the amount of power required by a legacy device is always equal to the power supplied, unless the power supplied
+			is equal to 0
+		*/
+		Definition of power consumption:
+=======
+		DefinitionOfPowerConsumption:
+>>>>>>> Stashed changes
+		(powerRequired(p)&powerSupplied(p1)) -> (p=p1)|(p1=0);
 
 end;

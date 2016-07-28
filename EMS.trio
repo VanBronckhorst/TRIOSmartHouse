@@ -1,10 +1,10 @@
 class EMS(const MAX_FROM_HEM):
 signature:
 	visible: 
-		washControl, msgToWash, msgToOven, ovenControl, refrigeratorControl, msgToRefrigerator, termPowerConsumption, roomHeating, refPower, 
+		washControl, msgToWash, msgToOven, ovenControl, termPowerConsumption, roomHeating, 
 		termalData, hemPower, blackoutReceive, legacyPower1, solarPower, windmillPower, chargeBattery, batteryPower, batteryFull, legacyReq1;
 	domains:
-		Resp: {Go,Warn};
+		Resp: {Start,Warn};
 
 
 	items:
@@ -32,8 +32,8 @@ signature:
 			Event triggered when a message is sent to the washing machine through the HAN
 			@param Resp: Start if the task can begin the execution, warn if it can't start the execution or if there is a blackout
 		*/
-		event msgToWash(Resp);
-		
+		event msgToWash(integer,Resp);
+
 		/*
 			This event is triggered when a request to execute a task scheduled by the oven is received through the HAN
 			@param integer: id of the task
@@ -57,34 +57,10 @@ signature:
 			Event triggered when a message is sent to the oven through the HAN
 			@param Resp: Start if the task can begin the execution, warn if there is a blackout
 		*/
-		event msgToOven(Resp);
+		event msgToOven(integer,Resp);
 
 
-		/*
-			This event is triggered when a request to execute a task scheduled by the refrigerator is received through the HAN
-			@param integer: id of the task
-			@param TaskType: type of the task, i.e., May or Must
-			@param PowerAmount: amount of power requested by the task
-			@param natural: amount of time necessary to complete the task
-			@param SlotsAmount: maximum number of slots in which a task allowing load shifting can be divided		
-			@param DelayAmount: maximum delay between two slots
-			@param Bool: 1 if the task allows load shedding, 0 otherwise
-			@param Bool: 1 if the task allows load balancing, 0 otherwise
-		*/
-		event refrigeratorControl(integer,TaskType,PowerAmount,natural,SlotsAmount,DelayType,Bool,Bool);
-
-		/*
-			State that represents tha amount of power provided to the refrigerator;
-			@param real: tha amount of power provided to the refrigerator at any istant
-		*/
-		state refPower(natural);
-
-		/*
-			Event triggered when a message is sent to the refrigerator through the HAN
-			@param Resp: Start if the task can begin the execution, warn if it can't start the execution or if there is a blackout
-		*/
-		event msgToRefrigerator(Resp);
-
+		
 		/*
 			State that represents the amount of power consumed by a legacy device
 			@param real: amount of power consumed by a legacy device at any instant
@@ -145,7 +121,7 @@ signature:
 			@param natural: number of the room
 			@param integer: temperature treshold in a room at any istant
 		*/
-		state termTreshold(natural,integer);
+		state termThreshold(natural,integer);
 
 		/*
 			A state that represents the amount of power consumed by the heating system
@@ -168,9 +144,49 @@ signature:
 		*/
 		state batteryFull;
 
+		/*
+			A state that represents that the battery is in charge with a given power.
+			@param real: the amount of power provided to the battery
+		*/
+		state chargeBattery(real);
+
+		/*
+			A state that represents that the washing machine is executing a task and that a certain amount of time and a certain amount of energy
+			is needed to complete the task.
+			@param integer: the id of task
+			@param real: the amount of time remaining
+			@param real: the amount of energy remaining
+		*/
+		state washState(integer, real, real);
+
+
+		/*
+			A state that represents that the oven  is executing a task and that a certain amount of time and a certain amount of energy
+			is needed to complete the task.
+			@param integer: the id of task
+			@param real: the amount of time remaining
+			@param real: the amount of energy remaining
+		*/
+		state ovenState(integer, real, real);
+
+		/*
+			A state use to count how many times a task has been stopped so far.
+			@param integer: the id of task
+			@param natural: number of times a task was stopped
+		*/
+		state washStopCounter(integer, natural);
+
 
 
 	axioms:
+		vars:
+		  	resp:Resp;
+		  	cons,cons2,a1,a2,a3,a4:real;
+		  	maxxx:real;
+		  	m,p,p1,t,t1,t2,s,d:real;
+		  	i:real;
+		  	sh,b: {0..1}
+
 		formulae:
 
 		/*
@@ -181,10 +197,30 @@ signature:
 			3) Max: it is the maximum amount of power that can be consumed ad any istant. It is the sum of power produced, the power that the batteries
 			        can produce and the power that can be bought from network(MAX_FROM_HEM)
 		*/
-		ConsumptionDefinition:
+		ConsumptionDefinition: //done
 		consumption(i) <-> washPower(a1) & ovenPower(a2) & legacyPower1(a3) & termPowerConsumption(a4) (i=a1+a2+a3+a4)  &
 		production(i) <-> windmillPower(a1) & solarPower(a2) & (i=a1+a2)  &
-		max(i) <-> production(a) & batteryPower(b) & (i = a + b + MAX_FROM_HEM);
+		max(i) <-> production(a) & batteryPower(b) & (i = a + b + MAX_FROM_HEM) &
+		consumption(cons) & consumption(cons2) -> cons2=cons &
+		production(cons) & production(cons2)-> cons=cons2;
+
+
+		/*
+			Defines that all the states that represents a power erogated or supplied are true only for 1 value at any moment
+		*/
+		PowerUnicity: //dpne
+		washPower(cons) & washPower(cons2)-> cons=cons2 &
+		ovenPower(cons) & ovenPower(cons2)-> cons=cons2 &
+		windmillPower(cons) & windmillPower(cons2)-> cons=cons2 &
+		solarPower(cons) & solarPower(cons2)-> cons=cons2 &
+		batteryPower(cons) & batteryPower(cons2)-> cons=cons2 &
+		legacyPower1(cons) & legacyPower1(cons2)-> cons=cons2 &
+		hemPower(cons) & hemPower(cons2)-> cons=cons2 &
+		legacyReq1(cons) & legacyReq1(cons2)-> cons=cons2 &
+
+		washState(i,t,e) & washState(i,t1,e1) -> t=t1 & e=e1 &
+		ovenState(i,t,e) & ovenState(i,t1,e1) -> t=t1 & e=e1 &
+		washStopCounter(i,nstop) & washStopCounter(i,nstop2) -> nstop2=nstop 
 
 		/*
 			This axiom defines the various kind of response that the EMS can send to the devices. Various scenarios are possible:
@@ -199,13 +235,45 @@ signature:
 			2) Must task: - a must task doesn't allows load balancing, shedding or shifting and can't be postponed. So, when a must request is received,
 							a positive message is sent the device and the power is set to the required one
 		*/
-		ResponsesFromEMS:
-		washControl(i,May,p,t,s,d,sh,b) & consumption(cons) & (((cons + p < max)  -> (msgToWash(Go) & washPower(p))) | (((cons + p > max) & b=1 & ex(p1)(0<p1<=p & cons+p1<max)  -> (msgToWash(Go) & washPower(p1))))) &
-		washControl(i,Must,p,t,s,d,sh,b) -> msgToWash(Go) & washPower(p) &
-		washControl(i,May,p,t,s,d,sh,0) & consumption(cons) & (cons + p > max)  -> (msgToWash(Warn) & washPower(0) & SomF(msgToWash(Go))) &
-		washControl(i,May,p,t,s,d,sh,1) & consumption(cons) & not ex(p1)(0<p1<p & (cons + p1 < max))  -> (msgToWash(Warn) & washPower(0) & SomF(msgToWash(Go))) &
+		ResponsesFromEMS: //done
+		washControl(i,May,p,t,s,d,sh,b) & consumption(cons) & max(maxxx) & (cons + p < maxxx)  -> (msgToWash(i,Start) & washPower(p) & washStopCounter(i,0) & washState(i,t,p*t)) &
+		washControl(i,Must,p,t,s,d,sh,b) -> msgToWash(i,Start) & washPower(p) & washStopCounter(i,0) & washState(i,t,p*t) &
+		washControl(i,May,p,t,s,d,sh,0) & consumption(cons) & (cons + p > max)  -> (msgToWash(i,Warn) & washPower(0) & SomF(msgToWash(i,Start) & washPower(p) & washStopCounter(i,0) & washState(i,t,p*t)) &
+		washControl(i,May,p,t,s,d,sh,1) & consumption(cons) & not ex(p1)(0<p1<p & (cons + p1 < max))  -> (msgToWash(i,Warn) & washPower(0) & SomF(msgToWash(i,Start) & washPower(p1) & washStopCounter(i,0) & washState(i,t,p*t)) &
+		washControl(i,May,p,t,s,d,sh,1) & consumption(cons) & max(maxxx) & ex(p1)(0<p1<p & (cons + p1 < maxxx))  ->  msgToWash(i,Start) & washPower(p1) & washStopCounter(i,0) & washState(i,t,p*t)
 
-		ovenControl(i,Must,p,t,s,d,sh,b) -> msgToOven(Go) & ovenPower(p)
+	
+		/*
+			Defines that if a starting message is sent to the washing machine then a certain amount of power greater than 0 is provided to the device. 
+			If the request is to execute a must task, or in the past there was a request to execute that must task, but was interrupted for a blackout, 
+			than the power provided to the device is exactly the required one. 
+		*/		
+		WashStartMsgConditions: //done
+		msgToWash(i,Start) -> washPower(p) & p>0
+        msgToWash(i,Start) & (washControl(i,Must,p,t,s,d,sh,b) | SomP(washControl(i,Must,p,t,s,d,sh,b))) -> washPower(p)
+
+		/*
+			Defines that if a starting message was sent to the oven than there is a request to execute that task or there was a request to execute 
+			that task, but was interrupted because of a blackout, than the power provided to the device is exactly the required one.
+		*/
+		OvenStartMsgConditions://done
+		msgToOven(i,Start) & (ovenControl(i,Must,p,t,s,d,sh,b) | SomP(ovenControl(i,Must,p,t,s,d,sh,b))) -> ovenPower(p)
+
+
+		/* 
+			Defines that power is provided to a device only it has previously sent a request 
+		*/
+		PowerIfRequested://done
+		ovenPower(p) & p>0 -> SomP(ovenControl(i,Must,p,t,s,d,sh,b)) &
+		washPower(p1) & p1>0 -> SomP(washControl(i,May,p,t,s,d,sh,b) & (p<>p1 -> b=1)
+
+
+		/*
+			Ensures that for every request a message is sent back
+		*/
+		ResponseEnsurance://done
+		washControl(i,m,p,t,s,d,sh,b)->msgToWash(resp)
+		ovenControl(i,m,p,t,s,d,sh,b)->msgToOven(resp)
 
 		/*
 			This formula specifies that:
@@ -215,57 +283,93 @@ signature:
 			3) if the power received from the network is greater than the maximum amount of power that can be bought, then we are in overflow.
 			4) if the power produced is less than the power produced and the batteries are not full, then the exceeding power is used to charge the batteries.
 		*/
-		PowerBalance:
+		PowerBalance: //done
 		consumption(con) & production(prod) & hemPower(bought) & batteryPower(bat) -> con<=production+bought+bat &
-		(washPower(w) & ovenPower(o) & termPowerConsumption(tp) & refPower(r) & legacyPower1(l) & windmillPower(p) & solarPower(s) & (w+o+l+r+tp=p+s)) -> (hemPower(0) & batteryPower(0)) &
+		(washPower(w) & ovenPower(o) & termPowerConsumption(tp) & legacyPower1(l) & windmillPower(p) & solarPower(s) & (w+o+l+tp=p+s)) -> (hemPower(0) & batteryPower(0)) &
 		(hemPower>=MAX_FROM_HEM) -> overflow &
-		(washPower(w) & ovenPower(o) & termPowerConsumption(tp) & refPower(r) & legacyPower1(l) & windmillPower(p) & solarPower(s) & (w+o+l+r+tp<p+s)) -> chargeBattery(i) & i=p+s) ;
+		(washPower(w) & ovenPower(o) & termPowerConsumption(tp) & legacyPower1(l) & windmillPower(p) & solarPower(s) & (w+o+l+tp<p+s)) -> chargeBattery(i) & i=p+s) ;
 
 		/*
 			If there is an overflow, and a sheddable task is in execution, than this task is interrupted(power set to 0) and a warning message is sent
 			to the device
 		*/
-		OverflowMeasuresShed:
-		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,1,b)) ->  msgToWash(Warn) & washPower(0);
+		OverflowMeasuresShed: //Done
 
-
-
-		OverflowMeasuresShift:
-		overflow & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & washPower(i) & i>0 -> (Lasts(washPower(0),d) | WithinF(consumption+p<max,d) ) &
-		consumption(cons) & (cons+p<max) & washState(i,t) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>1 & t>0 & washPower(0) -> washPower(p)
+		overflow & washState(i,t,e) & SomP(washControl(i,May,p,t,s,d,1,b)) ->  msgToWash(i,Warn) & NowOn(washPower(0));
 
 
 		/*
+			Defines that if there is an overflow, and a task that can be shifted is in execution and it wasn’t stop more than the number of allowed stop,
+			 than this task is interrupted (power set to 0) for at most the maximum amount of time specified in the initial request.
+		*/
+		OverflowMeasuresShift: //not necessary
+		overflow & washState(i,t,e) & stopCounter(i,nstop) & SomP(washControl(i,May,p,t,s,d,sh,b)) & s>nstop & washPower(i) & i>0 -> (Lasts(washPower(0),d) | WithinF(consumption+p<maxxx & max(maxxx),d) ) &
+		consumption(cons) & (cons+p<max) & washState(i,t) & SomP(washControl(i,May,p,t1,s,d,sh,b)) & t>0 & washPower(0) -> NowOn(washPower(p))
+		
+		/*
 			If an overflow is in progress and it is in execution a task that can be balanced and exist a power that allows to not overcome the power threshold,
 			then the task is executed using this power.
-			In our system only task scheduled by the washing machine, the refrigerator and  the heating system can be balanced
+			In our system only task scheduled by the washing machine and the heating system can be balanced
 		*/
-		OverflowMeasuresBalance:
-		overflow & washState(i,t1) & t1>0 & SomP(washControl(i,May,p,t,s,d,sh,1)) & washPower(nowWash) & nowWash > 0 & max(tot)& ex(z)(z>0 & z<p & consumption(now) & (now-nowWash+z=tot) )  -> washPower(z)
+		OverflowMeasuresBalance: //not necessary
+		overflow & washState(i,t1,e) & t1>0 & SomP(washControl(i,May,p,t,s,d,sh,1)) & washPower(nowWash) & nowWash > 0 & max(tot)& ex(z)(z>0 & z<p & consumption(now) & (now-nowWash+z=tot) )  -> NowOn(washPower(z))
+		overflow & ex(i)(roomHeating(i) & termPowerConsumption(nowTerm) & nowTerm > 0  & max(tot) & ex(z) (z>0 & consumption(now) & (now-nowTerm+z<=tot)) -> NowOn(termPowerConsumption(z))
 
-		overflow & ex(i)(roomHeating(i) & termPowerConsumption(nowTerm) & nowTerm > 0  & max(tot) & ex(z) (z>0 & consumption(now) & (now-nowTerm+z<=tot)) -> termPowerConsumption(z)
+		/*
+			Defines a counter that counts the number of time a task is stopped. Firstly it specifies that if a counter is counting the number of stop of
+			a certain task, than the device is executing that task (washState keeps track of the current task in execution). Secondly, it specifies 
+			that the counter start from zero. Thirdly it defines how the counter is incremented, that is: if a task is in execution and up to now a certain 
+			amount of power is provided to the device and there isn’t a blackout in progress and now the amount of power provided to the device is 0, than 
+			the counter should be incremented by one unit. Lastly it defines that if the counter is true for a certain task and for a certain number of stops
+			greater than zero, than the task must be a “May” task.
+		*/
+		WashStopCounterDefinition: //not necessary
+		washStopCounter(i,nstop) -> washState(i,t,e) & t>0 & e>0
+		washStopCounter(i,nstop) -> SomP(washStopCounter(i,0))
+		washState(i,t,e) & e>0 & t>0 & washPower(0) & not(blackoutReceive) & UpToNow(washPower(p) & p!=0) & UpToNow(stopCounter(i,nstop)) -> NowOn(stopCounter(i,nstop+1))
+		washStopCounter(i,nstop) & nstop > 0 -> SomP(requestTask(i,May,p,tot,s,d,sh,b) & s > 0)
 
-		//manca refrigerator
+		/*
+			Defines the state washState that keeps track of the current task in execution. The state washState has three arguments, the task id, 
+			the amount of time remaining for the completion of the task and the amount of energy necessary to complete the task. It specifies that 
+			energy and time will become 0 in the future except when the task allows load shedding. It then defines the monotonicity of the energy. 
+			Lastly it defines how the energy value and the time parameter change and how the energy and time parameters are correlated.
+		*/
+		WashStateDefinition: //done
+		washState(i,t,e) & e>0 & t>0 & not(SomP(washControl(i,m,p,t,s,d,sh,1))) -> SomF(washState(i,0,0)) 
+		UpToNow(washState(i,t,e)) -> Until(washState(i,t1,e1) & e1<=e,(msgToWash(i2,Start) & i2<>i)) &
+		Past(washState(i,t,e),t1) & Lasted(washPower(p),t1) -> washState(i,t2,e1) & e1=e-p*t1 & t2=e1/p;
 
+		/*
+			Defines the state ovenState that keeps track of the current task in execution. The state ovenState has three arguments, the task id, 
+			the amount of time remaining for the completion of the task and the amount of energy necessary to complete the task. It specifies that 
+			energy and time will become 0 in the future except when the task allows load shedding. It then defines the monotonicity of the energy. 
+			Lastly it defines how the energy value and the time parameter change and how the energy and time parameters are correlated.
+		*/
+		OvenStateDefinition: //done
+		ovenState(i,t,e) & e>0 & t>0 & not(SomP(ovenControl(i,m,p,t,s,d,sh,1))) -> SomF(ovenState(i,0,0) 
+		UpToNow(ovenState(i,t,e)) -> Until(ovenState(i,t1,e1) & e1<=e,(msgToOven(i2,Start) & i2<>i)) &
+		Past(ovenState(i,t,e),t1) & Lasted(ovenPower(p),t1) -> ovenState(i,t2,e1) & e1=e-p*t1 & t2=e1/p;
+		
 		/*
 			if a blackout is in progress the cosumption is set to 0 and a warning message is sent to the devices that are connected through the HAN.
 		*/	
 		OnBlackout:
-		blackoutReceive -> consumption(0) & msgToWash(Warn) & msgToOven(Warn) & msgToRefrigerator(Warn);
+		blackoutReceive & ovenState(i,t,e) & washState(i1,t1,e1) -> consumption(0) & msgToWash(i,Warn) & msgToOven(i1,Warn);
 
 		/*
 			If a blackout is just finished, and some tasks were executing before the blackout then a message to all the devices with pending task is sent,
 			in order to resume the execution.
 		*/
 		RestoreFromBlackout:
-		UpToNow(blackoutReceive) & NowOn(not blackoutReceive) -> /*(ex(p)(legacyReq1(p))-> legacyPower1(p)) serve per i legacy?*/ & (ex(i,t)(washState(i,t)&t>0)-> msgToWash(i,Start)) & (ex(i,t)(ovenState(i,t)&t>0)-> msgToOven(i,Start)) & (ex(i,t)(refrState(i,t)&t>0)-> msgToRefrigerator(i,Start)); 
+		UpToNow(blackoutReceive) & NowOn(not blackoutReceive) -> (ex(p)(legacyReq1(p))-> legacyPower1(p)) & (ex(i,t,e)(washState(i,t,e)&t>0&e>0)-> msgToWash(i,Start)) & (ex(i,t,e)(ovenState(i,t,e)&t>0&e>0)-> msgToOven(i,Start)); 
 
 		/*
 			This formula specifies that if there exist a sensor that perceive a temperature below a certain treshold in a room than we start to heat
 			that room
 		*/
 		TermalAlarm:
-		ex(i,t,t2)(termalData(i,t) & termTreshold(i,t2) & t<t2) <-> roomHeating(i)
+		ex(i,t,t2)(termalData(i,t) & termThreshold(i,t2) & t<t2) <-> roomHeating(i)
 
 end
 

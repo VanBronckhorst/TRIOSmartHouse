@@ -1,48 +1,125 @@
 class HAN(const MAX_DELAY):
 signature:
-	visible washIn,washOut,ovenIn,ovenOut,refrigeratorIn,refrigeratorOut;
+	visible washIn,washOut,ovenIn,ovenOut,refrigeratorIn,refrigeratorOut
+			emsToWash,emsToOven,washToEms,ovenToEms;
 
 	domains:
 	Bool:0..1;
 	TaskType: {May,Must};
 	Resp: {Go,Warn};
-//aa
 
-	event washIn(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
-	event washOut(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
-	event ovenIn(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
-	event ovenOut(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
-	event refrigeratorIn(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
-	event refrigeratorOut(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
+	/*
+		This event represents that a message is received from the washing machine.
+		@param integer: id of task
+		@param TaskType: type of the task
+		@param natural: amount of time needed to execute the task
+		@param real: power required to execute the task
+		@param natural: maximum amount of time that a task that allows load shifting can lie idle
+		@param natural: maximum number of slots in which a task that allows load shifting can be divided
+		@param Bool: 1 if the task allows load shedding, 0 otherwise
+		@param Bool: 1 if the task allows load balancing, 0 otherwise
+	*/
+	event washIn(integer,TaskType,natural,real,natural,natural,Bool,Bool);
+
+	/*
+		This event represents that a message is received from the oven.
+		@param integer: id of task
+		@param TaskType: type of the task
+		@param natural: amount of time needed to execute the task
+		@param real: power required to execute the task
+		@param natural: maximum amount of time that a task that allows load shifting can lie idle
+		@param natural: maximum number of slots in which a task that allows load shifting can be divided
+		@param Bool: 1 if the task allows load shedding, 0 otherwise
+		@param Bool: 1 if the task allows load balancing, 0 otherwise
+	*/
+	event ovenIn(integer,TaskType,natural,real,natural,natural,Bool,Bool);
+
+	/*
+		This event represents that a message from the EMS is sent to the washing machine.
+		@param integer: id of task
+		@param Resp: the response of the EMS
+	*/
+	event washOut(integer,Resp);
+
+	/*
+		This event represents that a message from the EMS is sent to the oven.
+		@param integer: id of task
+		@param Resp: the response of the EMS
+	*/
+	event ovenOut(integer,Resp);
 	
-	event emsToWash(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
-	event emsToOven(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
-	event emsToRefrigerator(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
-	event washToEms(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
-	event ovenToEms(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
-	event refrigeratorToEms(integer,TaskType,natural,natural,natural,natural,Bool,Bool);
+	/*
+		This event represents that a message for the washing machine is received from the EMS.
+		@param integer: id of task
+		@param Resp: the response of the EMS
+	*/
+	event emsToWash(integer,Resp);
+
+	/*
+		This event represents that a message for the oven is received from the EMS.
+		@param integer: id of task
+		@param Resp: the response of the EMS
+	*/
+	event emsToOven(integer,Resp);
+
+	/*
+		This event represents that a message is sent from the washing machine to the EMS.
+		@param integer: id of task
+		@param TaskType: type of the task
+		@param natural: amount of time needed to execute the task
+		@param real: power required to execute the task
+		@param natural: maximum amount of time that a task that allows load shifting can lie idle
+		@param natural: maximum number of slots in which a task that allows load shifting can be divided
+		@param Bool: 1 if the task allows load shedding, 0 otherwise
+		@param Bool: 1 if the task allows load balancing, 0 otherwise
+	*/
+	event washToEms(integer,TaskType,natural,real,natural,natural,Bool,Bool);
+
+	/*
+		This event represents that a message is received from the oven to the EMS.
+		@param integer: id of task
+		@param TaskType: type of the task
+		@param natural: amount of time needed to execute the task
+		@param real: power required to execute the task
+		@param natural: maximum amount of time that a task that allows load shifting can lie idle
+		@param natural: maximum number of slots in which a task that allows load shifting can be divided
+		@param Bool: 1 if the task allows load shedding, 0 otherwise
+		@param Bool: 1 if the task allows load balancing, 0 otherwise
+	*/
+	event ovenToEms(integer,TaskType,natural,real,natural,natural,Bool,Bool);
 
 
 	axioms:
 
+		vars:
+		i: integer;
+		m: TaskType;
+		p: natural;
+		sh: Bool;
+		b: Bool;
+		resp: Resp;
+		t,t1: real;
+
+		formulae:
+
+		/*
+			This set of axioms ensures that no message is lost. 
+			If a message is received from a device this message is redirect to the ems that will answer and
+			this answer will be redirect to the device.
+		*/
 		NoMessagesLost:
-		ex(i,m,p,s,d,sh,b)(washIn(i,m,p,s,d,sh,b)) -> ( WithinF(washToEms(i,m,p,s,d,sh,b),t) & WithinF(emsToWash(i,m,p,s,d,sh,b),t1)
-		& WithinF(washOut(i,m,p,s,d,sh,b),MAX_DELAY) & t<t1<MAX_DELAY)
+		ex(i,m,p,s,d,sh,b)(washIn(i,m,p,s,d,sh,b)) -> ( WithinF(washToEms(i,m,p,s,d,sh,b),t) & WithinF(emsToWash(i,resp),t1)
+		& WithinF(washOut(i,resp),MAX_DELAY) & t<t1<MAX_DELAY)
 
-		ex(i,m,p,s,d,sh,b)(ovenIn(i,m,p,s,d,sh,b)) -> ( WithinF(ovenToEms(i,m,p,s,d,sh,b),t) & WithinF(emsToOven(i,m,p,s,d,sh,b),t1)
-		& WithinF(ovenOut(i,m,p,s,d,sh,b),MAX_DELAY) & t<t1<MAX_DELAY)
-
-		ex(i,m,p,s,d,sh,b)(refrigeratorIn(i,m,p,s,d,sh,b)) -> ( WithinF(refrigetorToEms(i,m,p,s,d,sh,b),t) & WithinF(emsToRefrigerator(i,m,p,s,d,sh,b),t1)
-		& WithinF(refrigeratorOut(i,m,p,s,d,sh,b),MAX_DELAY) & t<t1<MAX_DELAY)
+		ex(i,m,p,s,d,sh,b)(ovenIn(i,m,p,s,d,sh,b)) -> ( WithinF(ovenToEms(i,m,p,s,d,sh,b),t) & WithinF(emsToOven(i,resp),t1)
+		& WithinF(ovenOut(i,reso),MAX_DELAY) & t<t1<MAX_DELAY)
 
 
-		ex(i,m,p,s,d,sh,b)(washOut(i,m,p,s,d,sh,b)) -> ( WithinP(emsToWash(i,m,p,s,d,sh,b),t) & WithinP(washToEms(i,m,p,s,d,sh,b),t1)
+		ex(i,m,p,s,d,sh,b)(washOut(i,resp)) -> ( WithinP(emsToWash(i,resp),t) & WithinP(washToEms(i,m,p,s,d,sh,b),t1)
 		& WithinP(washIn(i,m,p,s,d,sh,b),MAX_DELAY) & t<t1<MAX_DELAY)
 
-		ex(i,m,p,s,d,sh,b)(ovenOut(i,m,p,s,d,sh,b)) -> ( WithinP(emsToOven(i,m,p,s,d,sh,b),t) & WithinP(ovenToEms(i,m,p,s,d,sh,b),t1)
+		ex(i,m,p,s,d,sh,b)(ovenOut(i,resp)) -> ( WithinP(emsToOven(i,resp),t) & WithinP(ovenToEms(i,m,p,s,d,sh,b),t1)
 		& WithinP(ovenIn(i,m,p,s,d,sh,b),MAX_DELAY) & t<t1<MAX_DELAY)
 
-		ex(i,m,p,s,d,sh,b)(refrigeratorOut(i,m,p,s,d,sh,b)) -> ( WithinP(emsToRefrigerator(i,m,p,s,d,sh,b),t) & WithinP(refrigetorToEms(i,m,p,s,d,sh,b),t1)
-		& WithinP(refrigeratorOut(i,m,p,s,d,sh,b),MAX_DELAY) & t<t1<MAX_DELAY)
-
+	end
 		

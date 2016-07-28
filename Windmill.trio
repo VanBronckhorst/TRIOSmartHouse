@@ -1,0 +1,14 @@
+class Windmill:
+signature:
+	visible: powerErogated;
+
+	items:
+
+	/*
+		State that represent the amount of power currently produced by the windmill
+		@param real: the amount of power produced
+	*/
+	state powerErogated(real);
+
+
+end  		

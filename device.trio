@@ -16,7 +16,7 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 			PowerAmount: 1..MaxPower;
 			DelayAmount: 1..MaxDelay;
 			Bool:0..1;
-			TaskType: {May,Must};
+			TaskType: {May,Must}; 
 			Resp: {Start,Warn};
 
 		items:
@@ -71,8 +71,23 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 			state stopCounter(integer,natural);
 
 		axioms:
+			vars:
+				i, i1: natural;
+				m,m2: TaskType;
+				p,p2: PowerAmount;
+				t,t2,tot: natural;
+				s,s2: SlotsAmount;
+				d,d2: DelayType;
+				sh,sh2: Bool;
+				b,b2: Bool;
+				resp: Resp;
+				e: real;
+				k: natural;
+				pause: real;
+
 
 			formulae:
+
 
 				/*
 					Defines the task id
@@ -85,15 +100,15 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 				/*
 				 	A device can't execute two task in the same time, so a request to the ems is sent only if there isn't any running task
 				*/
-				NotRequestWhileWorking:
-					requestTask(i,m,p,t,s,d,sh,b) -> not ex(i2)((i2<>i1)& performingTask(i2,t2)&t2>0); 
+				NotRequestWhileWorking: //DONE
+					requestTask(i,m,p,t,s,d,sh,b) -> not ex(i1)(performingTask(i1,t2) & t1>0); 
 
 				
 				/*
 					A device can't execute two task in the same time, so a request can only be sent if no other request is pending, that is, a request
 					to perform a task is waiting for a response from the ems
 				*/
-				NoConsecutiveRequests:
+				NoConsecutiveRequests: //DONE
 					requestTask(i,m,p,t,s,d,sh,b) -> Until( not ex(i2,m2,p2,t2,s2,d2,sh2,b2)(requestTask(i2,m2,p2,t2,s2,d2,sh2,b2)) , msgFromEMS(i,resp))	
 
 				/*
@@ -103,7 +118,7 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 					a warning message is sent to the device.
 				*/
 				MustInsurance:
-					requestTask(i,Must,p,t,s,d,h,k) -> (not Within(msgFromEMS(i,Warn),t+MAX_DELAY) -> Futr((Lasts(powerSupplied(p),t))),MAX_DELAY);
+					requestTask(i,Must,p,t,s,d,sh,b) -> (not Within(msgFromEMS(i,Warn),t+MAX_DELAY) -> Futr((Lasts(powerSupplied(p),t)),MAX_DELAY));
 
 				/*
 			 		Ensures completion of all non sheddable tasks
@@ -111,28 +126,60 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 			 	MustEndIfNotSheddable:	
 			 		requestTask(i,m,p,t,s,d,0,b) -> SomF(performingTask(i,0));
 				
+				
+
 				/*
-				    Ensures a response from the EMS in MAX_DELAY time. We assume that no packet is lost by the network
-				*/	
-				Response:
-					requestTask(i,m,p,t,s,d,sh,b)-> Within(msgFromEMS(i,s),MAX_DELAY);
-
-
+				 	If the EMS sent a response then the device has asked that task before
+				*/
+				ResponseGeneratedByRequest:
+					msgFromEMS(i,resp) -> SomP(requestTask(i,m,p,t,st,d,sh,b))
+				
 				/*
 					Ensure that if the EMS send a start message a MUST task is executed without load balancinc,shedding or shifting.
 					It also ensures that the state remainingEnergy is set to the right value. 
 				*/
 				ResponseStartSupply:
-					msgFromEMS(i,Start)&requestTask(i,Must,p,t,s,d,sh,0)-> Lasts(powerSupplied(p),t) | WithinF(msgFromEMS(i,Warn),t) &
-					msgFromEMS(i,Start)&requestTask(i,m,p,t,s,d,sh,b)& not performingTask(i,t2) -> performingTask(i,t);
-					msgFromEMS(i,Start)& requestTask(i,m,p,t,s,d,sh,b) & performingTask(i,t2) -> powerSupplied(p);
+					msgFromEMS(i,Start)& Past(requestTask(i,m,p,t,s,d,sh,b),MAX_DELAY) & UpToNow(not performingTask(i,t2)) -> NowOn(performingTask(i,t)) & powerSupplied(p1) & p1>0;
+					
+				/*
+					If there was a blackout while the device was executing the task and the device received a start message, then the  device resume the task
+					and the power supplied is greater than 0
+				*/
+				StartAfterBlackout:
+					msgFromEMS(i,Start) & SomP(msgFromEMS(i,Warn)) & performingTask(i,t2) -> powerSupplied(p) & p>0;
 
+				/*
+					If there was a request to execute a must task and the device receives a start message than the device execute the task with the required power
+					for the required amount of time or during the execution a warning message is received, that means that a blackout is in progress.
+				*/
+				ResponseMustStartSupply:
+					msgFromEMS(i,Start) & Past(requestTask(i,Must,p,t,s,d,sh,0),MAX_DELAY) -> Lasts(powerSupplied(p),t) | WithinF(msgFromEMS(i,Warn),t) 
+
+				/*
+					This axiom guarantees that if the power supplied if p>0 than the device is performing a task and in the past it has asked the EMS
+					to execute that task
+				*/
+				PowerIfExecuting:
+					powerSupplied(p) & p > 0 -> performingTask(i,t) & t > 0 & SomP(requestTask(i,m,p1,t,s,d,sh,b))
+
+				/*
+					If a warning message is received than the task is "still in execution", but the power supplied is equal to 0.
+				*/
+				WarningMessage:
+					msgFromEMS(i,Warn) -> performingTask(i,t) & powerSupplied(0);
+
+				/*
+					A task is in execution if and only if in the past there was a request for that task and a start message was received from
+					the EMS
+				*/
+				PerformingOnlyIfRequest:
+					performingTask(i,t) <-> SomP(requestTask(i,m,p,t,s,d,sh,b)) & SomP(msgFromEMS(i,Start));
 
 				/*
 					It defines the time to live of a task that is contained in the state performingTask(i,t)
 				*/
-				TimeToLiveDefinition:
-					remainingEnergy(i,e) <-> performingTask(i,t) & t = e/powerSupplied(p);
+				TimeToLiveDefinition: //DONE
+					remainingEnergy(i,e) <-> performingTask(i,t) & powerSupplied(p) & t = e/p;
 
 				/*
 					It defines the amount of energy necessary to complete the task. It ensures that if the remaining energy is greater than 0
@@ -140,8 +187,8 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 					It defines also the evolution of the remaining energy state: it is a monotonic function. 
 					Finally it "computes" the value of remaining energy.
 				*/
-				RemainingEnergyDefinition:
-					(remainingEnergy(i,e) & e>0) -> SomF(remainingEnergy(i,0) | SomP(requestTask(i,m,p,t1,s,d,1)) &
+				RemainingEnergyDefinition: //not necessary
+					(remainingEnergy(i,e) & e>0) & not(SomP(requestTask(i,m,p,t,s,d,sh,1))) -> SomF(remainingEnergy(i,0) &
 					UpToNow(remainingEnergy(i,e)) -> Until(remainingEnergy(i,e1) & e1<=e,(msgFromEMS(i2,Start) & i2<>i)) &
 					Past(remainingEnergy(i,e),t) & Lasted(powerSupplied(p),t) -> remainingEnergy(i,e1) & e1 = e - p*t;
 				
@@ -149,7 +196,7 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 				  Defines that, if there's a power shortage during the execution the task must have been a delayable one and that the task is not divided in more than
 				  the maximum number of slots and that the idle phase is not longher than the maximum duration of the idle phase.
 				*/
-				ShiftDefinition:
+				ShiftDefinition: //not necessary
 					performingTask(i,t) & t>0 & powerSupplied(0) & UpToNow(stopCounter(i,k))-> SomP(requestTask(i,May,p,tot,s,d,sh,b)) & s>1 & d>0 & k+1 < s & NowOn(stopCounter(i,k+1))	&
 					performingTask(i,t) & t>0 & Lasted(powerSupplied(0),pause) & pause>0 -> SomP(requestTask(i,May,p,tot,s,d,sh,b))& s>1 & d>=pause
 
@@ -157,7 +204,7 @@ class Device( const MaxPower,const MaxSlots,const MaxDelay):
 					if the task is not balanceable then the power supplied must always be equal to the requested or to 0 in case of blackout
 					or in case the task is completed.
 				*/
-				NonBalanceableDef:
+				NonBalanceableDef: //not necessary
 				    performingTask(i,t) & SomP(requestTask(i,May,p,tot,s,d,sh,0))-> powerSupplied(0) | powerSupplied(p) ;
 
 

@@ -2,17 +2,48 @@ class Heating:
 
 signature: 
 	visible heatingRoom, powerConsumption;
-	{}
 	items:
+
+		/*
+			State that represents that the heating system is heating a given room.
+			@param natural: the id of the heated room
+		*/
 		state heatingRoom(natural);
-		state powerConsumption(natural);
-		state powerPerRoom(natural,natural)
+
+		/*
+			State that represents that the heating system is globally consuming a certain amount of power.
+			@param real: the amount of power consumed
+		*/
+		state powerConsumption(real);
+
+		/*
+			State that represents that a certain room is consuming a certain amount of power.
+			@param natural: the id of the room
+			@param real: the amount of power consumed
+		*/
+		state powerPerRoom(natural,real)
 
 
 	axioms:
+	vars:
+		i,:natural;
+		p, p1, tot, am1, am2, am3, am4: real
 
+	/*
+		This axiom define that a room is heated if and only if the amount of power provided to that room is greater than 0.
+		The second part defines that the amount of power that is totally consumed by the heating system is the sum of the power consumed by each room, assuming
+		four rooms.
+	*/
 	OnlyRoomWhereHeatIsRunningConsumePower:
 		heatingRoom(i) <-> powerPerRoom(i,amount) & amount > 0;
-
-		/** we assume four rooms */
 		powerConsumption(tot) <-> powerPerRoom(1,am1) & powerPerRoom(2,am2) & powerPerRoom(3,am3) & powerPerRoom(4,am4) & tot = am1+am2+am3+am4;
+
+	/*
+		Uniqueness of power states
+	*/
+	PowerUninqueness:
+		powerConsumption(p) & powerConsumption(p1) -> p=p1;
+		powerPerRoom(i,p) & powerPerRoom(i,p1) -> p=p1;
+
+
+	end

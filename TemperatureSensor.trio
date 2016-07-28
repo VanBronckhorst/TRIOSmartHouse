@@ -1,0 +1,14 @@
+class Sensor:
+signature:
+	visible: data;
+
+	items:
+
+	/*
+		State that represent the temperature mesaured in a certain room
+		@param natural: the id of the room
+		@param integer: the temperature mesaured
+	*/
+	state data(natural,integer);
+end
+
